@@ -97,14 +97,15 @@ export const Hero: React.FC<HeroProps> = ({
 
           {/* 
             Subtexts: 
-            Smooth Rotating Role on Left (rotates every 3 seconds through the 4 roles) + PORTFOLIO 2026 on Right
-            100% clean, never overwhelming, zero overlap!
+            Mobile / Small Screens: Rotating role on left + PORTFOLIO 2026 on right
+            Desktop / Wide Screens: All roles in 1 row ("isang bagsakan") + PORTFOLIO 2026 on right
           */}
-          <div className="w-full flex justify-between items-center mt-2 sm:mt-2.5 md:mt-3 px-1 sm:px-2 md:px-3 animate-smooth-subtext">
-            {/* Rotating Role (Left Column, flush with 'G') */}
+          {/* Mobile view (< md) */}
+          <div className="w-full flex md:hidden justify-between items-center mt-2 sm:mt-2.5 px-1 sm:px-2 animate-smooth-subtext">
+            {/* Rotating Role (Left Column) */}
             <div className="h-[20px] sm:h-[24px] flex items-center overflow-hidden">
               <span
-                className={`font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] md:text-[14px] leading-none whitespace-nowrap tracking-[-0.04em] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                className={`font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.04em] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                   isTransitioning
                     ? 'opacity-0 -translate-y-2'
                     : 'opacity-100 translate-y-0'
@@ -114,10 +115,29 @@ export const Hero: React.FC<HeroProps> = ({
               </span>
             </div>
 
-            {/* Portfolio Year (Right Column, flush with 'S') */}
-            <span className="font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] md:text-[14px] leading-none whitespace-nowrap tracking-[-0.04em] text-right">
+            {/* Portfolio Year (Right Column) */}
+            <span className="font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.04em] text-right">
               PORTFOLIO 2026
             </span>
+          </div>
+
+          {/* Desktop / Medium / Bigger screens (>= md): Centered roles, PORTFOLIO 2026 hidden */}
+          <div className="w-full hidden md:flex justify-center items-center mt-2.5 md:mt-3 px-1 sm:px-2 md:px-3 animate-smooth-subtext">
+            {/* All Roles Centered in 1 Single Row */}
+            <div className="flex items-center justify-center gap-1.5 lg:gap-2 xl:gap-2.5 whitespace-nowrap">
+              {roles.map((role, idx) => (
+                <React.Fragment key={idx}>
+                  <span className="font-body-bold text-black text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[14px] leading-none tracking-[-0.04em]">
+                    {role}
+                  </span>
+                  {idx < roles.length - 1 && (
+                    <span className="text-black/30 font-normal select-none" aria-hidden="true">
+                      •
+                    </span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </div>
       </section>

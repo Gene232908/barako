@@ -10,7 +10,11 @@ export interface ProjectItem {
 
 export interface ServiceItem {
   id: string;
+  number?: string;
   title: string;
+  description?: string;
+  category?: string;
+  deliverables?: string[];
 }
 
 export interface SocialLink {

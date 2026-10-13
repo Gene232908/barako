@@ -2,6 +2,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { WorksSection } from './components/WorksSection';
 import { AboutSection } from './components/AboutSection';
+import { ServicesSection } from './components/ServicesSection';
 import { Footer } from './components/Footer';
 import { portfolioData } from './data/portfolioData';
 
@@ -26,11 +27,15 @@ export function App() {
           projects={portfolioData.projects}
         />
 
-        {/* About, AI Automation & Services Section */}
+        {/* About Section */}
         <AboutSection
           aboutTitle={portfolioData.about.title}
           paragraphs={portfolioData.about.paragraphs}
           highlight={portfolioData.about.highlight}
+        />
+
+        {/* Services Section */}
+        <ServicesSection
           servicesTitle={portfolioData.services.title}
           services={portfolioData.services.items}
         />
