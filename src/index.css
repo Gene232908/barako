@@ -19,7 +19,7 @@
 
   html, body, #root {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   html {
@@ -294,6 +294,28 @@
 .animate-drawer-link {
   opacity: 0;
   animation: drawerLinkSlide 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Scroll-triggered soft blur reveal (blur + fade only, no movement) */
+.blur-reveal {
+  opacity: 0;
+  filter: blur(8px);
+  transition:
+    opacity 1.6s cubic-bezier(0.25, 0.1, 0.25, 1),
+    filter 1.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.blur-reveal[data-shown="true"] {
+  opacity: 1;
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blur-reveal {
+    opacity: 1;
+    filter: none;
+    transition: none;
+  }
 }
 
 /* Fade in up helper */

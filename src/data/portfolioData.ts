@@ -60,6 +60,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-1',
         number: '01',
         title: 'Full-Stack Web Development',
+        tagline: 'Your idea, live on the web.',
         category: 'Web & Systems',
         description:
           'Custom websites, web applications, front-end and back-end development, APIs, and database integration.',
@@ -74,6 +75,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-2',
         number: '02',
         title: 'Business Systems Development',
+        tagline: 'Stop running your business on spreadsheets.',
         category: 'Web & Systems',
         description:
           'CRM platforms, admin dashboards, inventory systems, booking systems, and management tools.',
@@ -88,6 +90,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-3',
         number: '03',
         title: 'AI Automation & Integration',
+        tagline: 'Let the repetitive work run itself.',
         category: 'AI & Automation',
         description:
           'Workflow automation, API integrations, AI-powered features, and connecting business tools.',
@@ -102,6 +105,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-4',
         number: '04',
         title: 'UI/UX & Web Design',
+        tagline: 'Websites people actually enjoy using.',
         category: 'Design & QA',
         description:
           'Website layouts, responsive interfaces, user-friendly navigation, and design implementation.',
@@ -116,6 +120,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-5',
         number: '05',
         title: 'Website Testing & QA',
+        tagline: 'Nothing breaks on launch day.',
         category: 'Design & QA',
         description:
           'Functionality testing, bug fixing, responsive testing, and troubleshooting.',
@@ -130,6 +135,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-6',
         number: '06',
         title: 'Digital Marketing & SEO',
+        tagline: 'Get found on Google.',
         category: 'Growth & Creative',
         description:
           'Website optimization, search visibility, and digital marketing support.',
@@ -144,6 +150,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-7',
         number: '07',
         title: 'IT Support & Troubleshooting',
+        tagline: 'Tech problems? Handled.',
         category: 'IT & Hardware',
         description:
           'Computer hardware diagnostics, PC assembly, system installation, software troubleshooting, and networking.',
@@ -158,6 +165,7 @@ export const portfolioData: PortfolioData = {
         id: 'srv-8',
         number: '08',
         title: 'Graphic Design & Video Editing',
+        tagline: 'Visuals that stop the scroll.',
         category: 'Growth & Creative',
         description:
           'Promotional posters, marketing creatives, social media graphics, video editing, and visual brand assets.',

@@ -1,4 +1,5 @@
 import React from 'react';
+import { BlurReveal } from './BlurReveal';
 
 interface AboutSectionProps {
   aboutTitle: string;
@@ -23,27 +24,29 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
           {/* Left Column Label */}
           <div className="md:col-span-4 lg:col-span-3">
-            <p className="font-section-label text-black tracking-[-0.04em]">{aboutTitle}</p>
+            <BlurReveal as="p" className="font-section-label text-black tracking-[-0.04em]">
+              {aboutTitle}
+            </BlurReveal>
           </div>
 
           {/* Right Column Body Text */}
           <div className="md:col-span-8 lg:col-span-9 flex flex-col gap-6 max-w-[820px]">
             {paragraphs.map((p, idx) => (
-              <p key={idx} className="font-body-bold text-black leading-relaxed">
+              <BlurReveal as="p" key={idx} delay={150} className="font-body-bold text-black leading-relaxed">
                 {p}
-              </p>
+              </BlurReveal>
             ))}
 
             {/* Optional Highlight Box */}
             {highlight && (
-              <div className="mt-4 pt-6 border-t border-black/10 flex flex-col gap-3">
+              <BlurReveal className="mt-4 pt-6 border-t border-black/10 flex flex-col gap-3">
                 <h3 className="font-section-label text-black tracking-[-0.04em]">
                   {highlight.title}
                 </h3>
                 <p className="font-body-bold text-black/90 leading-relaxed">
                   {highlight.description}
                 </p>
-              </div>
+              </BlurReveal>
             )}
           </div>
         </div>

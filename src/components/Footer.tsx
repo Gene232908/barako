@@ -1,5 +1,6 @@
 import React from 'react';
 import { RollingLink } from './RollingLink';
+import { BlurReveal } from './BlurReveal';
 import type { SocialLink, ContactInfo } from '../types/portfolio';
 
 interface FooterProps {
@@ -22,7 +23,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Top 3 Columns: Navigation, Socials, Contacts */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 md:gap-12">
           {/* 1. Navigation Column */}
-          <div className="flex flex-col gap-4">
+          <BlurReveal className="flex flex-col gap-4">
             <p className="font-body-bold text-black px-1.5">Navigation</p>
 
             <div className="flex flex-col items-start gap-1">
@@ -35,10 +36,10 @@ export const Footer: React.FC<FooterProps> = ({
                 />
               ))}
             </div>
-          </div>
+          </BlurReveal>
 
           {/* 2. Socials Column */}
-          <div className="flex flex-col gap-4">
+          <BlurReveal delay={150} className="flex flex-col gap-4">
             <p className="font-body-bold text-black px-1.5">Socials</p>
 
             <div className="flex flex-col items-start gap-1">
@@ -52,10 +53,10 @@ export const Footer: React.FC<FooterProps> = ({
                 />
               ))}
             </div>
-          </div>
+          </BlurReveal>
 
           {/* 3. Contacts Column */}
-          <div className="flex flex-col gap-4">
+          <BlurReveal delay={300} className="flex flex-col gap-4">
             <p className="font-body-bold text-black px-1.5">Contacts</p>
 
             <div className="flex flex-col items-start gap-1">
@@ -72,11 +73,11 @@ export const Footer: React.FC<FooterProps> = ({
                 rel="noopener noreferrer"
               />
             </div>
-          </div>
+          </BlurReveal>
         </div>
 
         {/* Bottom Bar: Copyright */}
-        <div className="pt-6 border-t border-black/5 flex items-center justify-between">
+        <BlurReveal delay={450} className="pt-6 border-t border-black/5 flex items-center justify-between">
           <p className="text-[13px] font-body-bold text-[#808080] uppercase tracking-[-0.04em]">
             {contacts.copyright}
           </p>
@@ -84,7 +85,7 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="text-[11px] font-mono tracking-tight text-black/40 uppercase">
             GENE WAGAS PORTFOLIO
           </div>
-        </div>
+        </BlurReveal>
       </div>
     </footer>
   );

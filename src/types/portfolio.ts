@@ -12,6 +12,7 @@ export interface ServiceItem {
   id: string;
   number?: string;
   title: string;
+  tagline?: string;
   description?: string;
   category?: string;
   deliverables?: string[];
