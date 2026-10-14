@@ -25,8 +25,6 @@ export function App() {
         {/* Stacked Works Project Cards */}
         <WorksSection
           projects={portfolioData.projects}
-          services={portfolioData.services.items}
-          roles={portfolioData.author.roles}
           email={portfolioData.contacts.email}
         />
 

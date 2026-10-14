@@ -1,10 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { ProjectItem, ServiceItem } from '../types/portfolio';
+import type { ProjectItem } from '../types/portfolio';
+import { OPEN_PHONE_CHAT } from '../lib/phoneChat';
 
 interface WorksSectionProps {
   projects: ProjectItem[];
-  services?: ServiceItem[];
-  roles?: string[];
   email?: string;
 }
 
@@ -64,7 +63,7 @@ const useClock = () => {
   return time;
 };
 
-export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services = [], roles = [], email }) => {
+export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const contentMeasureRef = useRef<HTMLDivElement>(null);
   const nameLInner = useRef<HTMLDivElement>(null);
@@ -86,7 +85,6 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
     shadow: useRef<HTMLDivElement>(null),
     shadowC: useRef<HTMLDivElement>(null),
     call: useRef<HTMLDivElement>(null),
-    overlay: useRef<HTMLDivElement>(null),
     nmL: useRef<HTMLDivElement>(null),
     nmR: useRef<HTMLDivElement>(null),
   };
@@ -95,6 +93,10 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
   const [contentH, setContentH] = useState(0);
   const [nameSize, setNameSize] = useState({ lw: 1, lh: 1, rw: 1, rh: 1 });
   const [finish, setFinish] = useState<FinishKey>('titanium');
+  // Lights the intro bulb once the device is (nearly) open; resets when it folds shut so it replays.
+  const [lit, setLit] = useState(false);
+  const litRef = useRef(false);
+  const [chatSignal, setChatSignal] = useState(0);
   const time = useClock();
 
   // Viewport tracking; ignores small mobile URL-bar height changes to avoid jitter.
@@ -202,6 +204,11 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
     const closeT = n.U2 > 0 ? clamp((e - n.U1 - n.innerPx - n.U2 * 0.08) / (n.U2 * 0.92), 0, 1) : 0;
 
     const c = easeInOutCubic(openT) * (1 - easeInOutCubic(closeT));
+    const wantLit = litRef.current ? c > 0.3 : c > 0.85;
+    if (wantLit !== litRef.current) {
+      litRef.current = wantLit;
+      setLit(wantLit);
+    }
     const u = +(1 - c).toFixed(4);
     const d = 180 * u;
     const sinD = Math.sin((d * Math.PI) / 180);
@@ -255,10 +262,6 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
       set(el.shF.current, 'opacity', String(leafUp ? +(m ** 1.6 * 0.8).toFixed(3) : 0));
       set(el.shB.current, 'opacity', String(leafUp ? 0 : +((2 - m) ** 1.6 * 0.7).toFixed(3)));
       set(el.shR.current, 'opacity', String(+(sinD ** 1.8 * 0.5).toFixed(3)));
-
-      const ov = clamp((c - 0.975) * 40, 0, 1);
-      set(el.overlay.current, 'opacity', String(+ov.toFixed(3)));
-      set(el.overlay.current, 'visibility', ov > 0.01 ? 'visible' : 'hidden');
 
       const sx = port ? 1 : 0.5 + 0.5 * c;
       const st = `translateX(-50%) translateX(${(port ? 0 : (g.W / 4) * u).toFixed(1)}px) scaleX(${sx.toFixed(4)})`;
@@ -384,6 +387,34 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
     kick.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portrait, vp.w, vp.h, scale, contentH, nameSize, finish]);
+
+  // OPEN_PHONE_CHAT (e.g. "Let's talk"): glide to the closed phone's call screen, then open the chat.
+  useEffect(() => {
+    let raf = 0;
+    let timer = 0;
+    const onOpen = () => {
+      const s = sectionRef.current;
+      if (!s) return;
+      const p = params.current;
+      const top = s.getBoundingClientRect().top + window.scrollY;
+      const target = Math.round(top + p.U1 + p.innerPx + p.U2 + p.stageH * MOTION.holdLength * 0.5);
+      window.scrollTo({ top: target, behavior: 'smooth' });
+      const t0 = performance.now();
+      const wait = () => {
+        if (Math.abs(window.scrollY - target) < 3 || performance.now() - t0 > 3000) {
+          timer = window.setTimeout(() => setChatSignal((n) => n + 1), 350);
+        } else raf = requestAnimationFrame(wait);
+      };
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(wait);
+    };
+    window.addEventListener(OPEN_PHONE_CHAT, onOpen);
+    return () => {
+      window.removeEventListener(OPEN_PHONE_CHAT, onOpen);
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }, []);
 
   const scrollToOpen = (ev: React.MouseEvent) => {
     const t = ev.target as HTMLElement;
@@ -525,7 +556,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
       style={{ ...abs, left: landscape && which === 'R' ? -halfW : 0, top: portrait && which === 'R' ? -halfH : 0, width: D }}
     >
       <div ref={which === 'R' ? contentMeasureRef : undefined} style={{ width: D }}>
-        <ScreenPage projects={projects} services={services} roles={roles} email={email} portrait={portrait} />
+        <ScreenPage projects={projects} portrait={portrait} lit={lit} />
       </div>
     </div>
   );
@@ -621,10 +652,10 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
                 <div style={{ ...abs, inset: G.f, borderRadius: R - G.f, background: '#050505' }} />
                 <div style={{ ...abs, inset: E, borderRadius: R - E, background: SCREEN_BG, overflow: 'hidden', contain: 'paint' }}>
                   <div style={{ ...fill, cursor: 'pointer', isolation: 'isolate' }} onClick={scrollToOpen}>
-                    <LockScreen time={time} projects={projects} portrait={portrait} />
+                    <LockScreen time={time} portrait={portrait} />
                   </div>
                   <div ref={el.call} style={{ ...fill, opacity: 0, zIndex: 4, isolation: 'isolate' }}>
-                    <CallScreen email={email} portrait={portrait} />
+                    <CallScreen email={email} portrait={portrait} time={time} openSignal={chatSignal} />
                   </div>
                   {glare()}
                 </div>
@@ -632,32 +663,6 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
                 <div ref={el.shB} style={{ ...fill, borderRadius: rAll, background: shade('back'), opacity: 0, pointerEvents: 'none', zIndex: 9 }} />
               </div>
 
-              {/* Fully-open overlay with nav pill */}
-              <div
-                ref={el.overlay}
-                style={{ ...abs, left: E, top: E, width: D, height: O, borderRadius: R - E, overflow: 'hidden', pointerEvents: 'none', opacity: 0, zIndex: 10 }}
-              >
-                <div style={{ ...abs, left: 0, right: 0, bottom: portrait ? 16 : 20, display: 'flex', justifyContent: 'center', pointerEvents: 'auto' }}>
-                  <nav className="flex items-center gap-1 p-1 rounded-full bg-[#111]/90 backdrop-blur-md shadow-[0_10px_30px_-10px_rgba(0,0,0,.5)]">
-                    {[
-                      ['Works', '#works'],
-                      ['About', '#about'],
-                      ['Services', '#services'],
-                      ['Contact', '#contact'],
-                    ].map(([label, href], i) => (
-                      <a
-                        key={href}
-                        href={href}
-                        className={`px-3.5 py-2 rounded-full text-[13px] font-medium tracking-tight transition-colors ${
-                          i === 0 ? 'bg-white text-black' : 'text-white/80 hover:text-white'
-                        }`}
-                      >
-                        {label}
-                      </a>
-                    ))}
-                  </nav>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -687,218 +692,926 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, services =
   );
 };
 
-const LockScreen: React.FC<{ time: string; projects: ProjectItem[]; portrait: boolean }> = ({ time, projects, portrait }) => {
-  const notes = projects.slice(0, portrait ? 1 : 2);
+// Realistic light bulb beside the intro headline. Fades in, then flickers on when `on` flips true
+// (see .idea-bulb in index.css).
+const IdeaBulb: React.FC<{ on: boolean; height: number }> = ({ on, height }) => {
+  const u = React.useId().replace(/:/g, '');
+  const globe = 'M41 121C41 106 18 95 18 63a42 42 0 0 1 84 0c0 32-23 43-23 58z';
+  const rays: [number, number, number, number][] = [
+    [60, 4, 60, -10],
+    [26, 14, 17, 3],
+    [94, 14, 103, 3],
+    [8, 44, -6, 39],
+    [112, 44, 126, 39],
+    [10, 80, -3, 87],
+    [110, 80, 123, 87],
+  ];
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ padding: portrait ? '18px 16px 16px' : '34px 22px 22px' }}>
-      <img src="/images/fold-portrait.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none" draggable={false} />
-      <div className="relative z-10 flex flex-col items-center text-center">
-        <span className="font-black text-[#0a0a0a] leading-none tracking-[-0.05em]" style={{ fontSize: portrait ? 64 : 96 }}>
+    <span className={`idea-bulb shrink-0 ${on ? 'is-on' : ''}`} aria-hidden="true" style={{ height, width: (height * 136) / 184 }}>
+      <svg viewBox="-8 -14 136 184" width="100%" height="100%" overflow="visible">
+        <defs>
+          <radialGradient id={`${u}g`} cx="50%" cy="38%" r="60%">
+            <stop offset="0" stopColor="#ffffff" stopOpacity=".95" />
+            <stop offset=".55" stopColor="#f1f0ee" stopOpacity=".55" />
+            <stop offset="1" stopColor="#c9c7c2" stopOpacity=".55" />
+          </radialGradient>
+          <radialGradient id={`${u}l`} cx="50%" cy="45%" r="62%">
+            <stop offset="0" stopColor="#fffdf3" />
+            <stop offset=".35" stopColor="#ffe9a8" />
+            <stop offset=".8" stopColor="#ffc95a" />
+            <stop offset="1" stopColor="#f2a93b" />
+          </radialGradient>
+          <radialGradient id={`${u}h`} cx="50%" cy="50%" r="50%">
+            <stop offset="0" stopColor="#ffd77a" stopOpacity=".75" />
+            <stop offset=".45" stopColor="#ffd77a" stopOpacity=".22" />
+            <stop offset="1" stopColor="#ffd77a" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id={`${u}m`} x1="0" x2="1">
+            <stop offset="0" stopColor="#6d6d70" />
+            <stop offset=".3" stopColor="#d9d9dc" />
+            <stop offset=".55" stopColor="#f7f7f8" />
+            <stop offset="1" stopColor="#5a5a5d" />
+          </linearGradient>
+          <linearGradient id={`${u}r`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ffb547" stopOpacity="0" />
+            <stop offset="1" stopColor="#ffb547" />
+          </linearGradient>
+          <filter id={`${u}f`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.6" />
+          </filter>
+        </defs>
+
+        {/* halo */}
+        <circle className="glow" cx="60" cy="62" r="74" fill={`url(#${u}h)`} />
+
+        {/* rays */}
+        {rays.map(([x1, y1, x2, y2], i) => (
+          <line
+            key={i}
+            className="ray"
+            style={{ '--i': i } as React.CSSProperties}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke="#f2a93b"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+          />
+        ))}
+
+        {/* glass: unlit, then the warm lit layer on top */}
+        <path d={globe} fill={`url(#${u}g)`} stroke="rgba(17,17,17,.28)" strokeWidth="1.6" />
+        <path className="lit" d={globe} fill={`url(#${u}l)`} stroke="rgba(214,140,30,.55)" strokeWidth="1.6" />
+
+        {/* stem + filament */}
+        <path d="M52 121V96l-4-22M68 121V96l4-22" fill="none" stroke="#8c8a86" strokeWidth="1.6" strokeLinecap="round" />
+        <path
+          d="M48 74q3-7 6 0t6 0 6 0 6 0"
+          fill="none"
+          stroke="#5c5a57"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <g className="lit">
+          <path d="M48 74q3-7 6 0t6 0 6 0 6 0" fill="none" stroke="#fff3c4" strokeWidth="5" strokeLinecap="round" filter={`url(#${u}f)`} />
+          <path d="M48 74q3-7 6 0t6 0 6 0 6 0" fill="none" stroke="#ff9f1a" strokeWidth="2" strokeLinecap="round" />
+        </g>
+
+        {/* specular highlights */}
+        <path d="M33 44c4-12 13-20 24-23" fill="none" stroke="#fff" strokeOpacity=".9" strokeWidth="5" strokeLinecap="round" />
+        <circle cx="30" cy="57" r="2.6" fill="#fff" fillOpacity=".85" />
+
+        {/* collar + screw base */}
+        <rect x="39" y="119" width="42" height="9" rx="3" fill={`url(#${u}m)`} stroke="rgba(0,0,0,.35)" strokeWidth=".8" />
+        {[130, 138, 146].map((y) => (
+          <g key={y}>
+            <rect x="40" y={y - 2} width="40" height="8" rx="4" fill={`url(#${u}m)`} stroke="rgba(0,0,0,.35)" strokeWidth=".8" />
+            <path d={`M41 ${y + 5}h38`} stroke="rgba(0,0,0,.28)" strokeWidth="1" />
+          </g>
+        ))}
+        <path d="M46 152h28l-4 9a5 5 0 0 1-4.6 3h-10.8a5 5 0 0 1-4.6-3z" fill="#1a1a1b" />
+      </svg>
+    </span>
+  );
+};
+
+// Slow crossfade through a project's screenshots, with small progress dots.
+const Crossfade: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (images.length < 2) return;
+    const id = window.setInterval(() => setI((n) => (n + 1) % images.length), 3800);
+    return () => window.clearInterval(id);
+  }, [images.length]);
+  return (
+    <div className="relative w-full h-full">
+      {images.map((src, n) => (
+        <img
+          key={src}
+          src={src}
+          alt={n === i ? alt : ''}
+          draggable={false}
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ opacity: n === i ? 1 : 0, transition: 'opacity 1.1s ease' }}
+        />
+      ))}
+      {images.length > 1 && (
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+          {images.map((src, n) => (
+            <span
+              key={src}
+              className="h-1.5 rounded-full bg-white shadow-[0_0_4px_rgba(0,0,0,.3)]"
+              style={{ width: n === i ? 16 : 6, opacity: n === i ? 1 : 0.6, transition: 'width .4s ease, opacity .4s ease' }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// A week's content plan as a grid of mock posts — stands in for a photo on the social media chapter.
+const SOCIAL_POSTS: { day: string; title: string; kind: string; bg: string; fg: string; play?: boolean }[] = [
+  { day: 'Mon', title: 'New menu drop', kind: 'Post', bg: '#111111', fg: '#ffffff' },
+  { day: 'Tue', title: '3 quick tips', kind: 'Carousel', bg: '#e6e3dd', fg: '#111111' },
+  { day: 'Wed', title: 'Behind the scenes', kind: 'Reel', bg: '#8f8b84', fg: '#ffffff', play: true },
+  { day: 'Thu', title: '“Thank you!”', kind: 'Customer story', bg: '#ffffff', fg: '#111111' },
+  { day: 'Fri', title: 'Meet the team', kind: 'Post', bg: '#2a2a2a', fg: '#ffffff' },
+  { day: 'Sat', title: 'Weekend promo', kind: 'Story', bg: '#d6d2cb', fg: '#111111' },
+];
+
+const SocialPlan: React.FC = () => (
+  <div className="w-full h-full flex flex-col p-[4.5%] bg-[#f1efeb]">
+    <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.12em] text-black/45">
+      <span>Content plan</span>
+      <span>This week</span>
+    </div>
+    <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-[3%] mt-[4%]">
+      {SOCIAL_POSTS.map((p) => (
+        <div
+          key={p.day}
+          className="relative rounded-[10px] p-[8%] flex flex-col justify-between overflow-hidden"
+          style={{ background: p.bg, color: p.fg, boxShadow: p.bg === '#ffffff' ? 'inset 0 0 0 1px rgba(0,0,0,.08)' : undefined }}
+        >
+          <span className="text-[9px] uppercase tracking-[0.12em] opacity-60">{p.day}</span>
+          {p.play && (
+            <span className="absolute top-[8%] right-[8%] w-6 h-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                <path d="M2.5 1.2v7.6L8.6 5z" />
+              </svg>
+            </span>
+          )}
+          <div className="relative">
+            <p className="text-[12px] font-semibold leading-tight tracking-[-0.01em]">{p.title}</p>
+            <p className="text-[9px] mt-0.5 opacity-60">{p.kind}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// iOS Messages app icon.
+const MessagesIcon: React.FC<{ size: number }> = ({ size }) => {
+  const id = React.useId();
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="shrink-0 block">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#67F27F" />
+          <stop offset="1" stopColor="#0BBA2B" />
+        </linearGradient>
+      </defs>
+      <rect width="24" height="24" rx="5.4" fill={`url(#${id})`} />
+      <ellipse cx="12" cy="11.2" rx="7.4" ry="6.1" fill="#fff" />
+      <path d="M7.4 14.9c-.2 1.6-1 2.7-2.3 3.4 2.2.3 3.9-.4 5-1.6z" fill="#fff" />
+    </svg>
+  );
+};
+
+const LOCK_MESSAGES = [
+  {
+    from: 'Someone messaged you',
+    text: "Hi Gene! We need a website that actually brings in customers. Can you build it?",
+    when: 'now',
+  },
+  {
+    from: 'New project request',
+    text: 'Saw your portfolio. Can you set up our CRM and automate our workflow?',
+    when: '3m ago',
+  },
+];
+
+const WALLPAPER = '/images/puss.jpg';
+
+// Shown on the lock screen once a visitor has finished the iMessage chat.
+const SENT_MESSAGES = [
+  { from: 'Gene Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
+];
+
+const LockScreen: React.FC<{ time: string; portrait: boolean; messages?: typeof LOCK_MESSAGES }> = ({
+  time,
+  portrait,
+  messages = LOCK_MESSAGES,
+}) => {
+  const notes = messages.slice(0, portrait ? 1 : 2);
+  const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return (
+    <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ padding: portrait ? '16px 14px 10px' : '34px 22px 14px' }}>
+      {/* Wallpaper, framed so the cat sits between the clock and the notifications */}
+      <div className="absolute inset-0 pointer-events-none bg-[#0d1830]">
+        <img src={WALLPAPER} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: `50% ${portrait ? 35 : 45}%` }} />
+        {/* Soft top and bottom shading keeps the clock and the glass legible, like iOS does */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(5,10,25,.35) 0%, rgba(5,10,25,0) 30%, rgba(5,10,25,0) 62%, rgba(5,10,25,.4) 100%)' }} />
+      </div>
+      <div className="relative z-10 flex flex-col items-center text-center text-white">
+        <span className="ios-lock-date" style={{ fontSize: portrait ? 13 : 17 }}>
+          {date}
+        </span>
+        <span className="glass-time" style={{ fontSize: portrait ? 78 : 118, marginBottom: portrait ? 13 : 20 }}>
           {time}
         </span>
-        <span className="text-black/65 font-medium tracking-tight mt-2" style={{ fontSize: portrait ? 12 : 14 }}>
-          Full stack developer · Philippines
+        <span className="ios-lock-date uppercase tracking-[0.16em]" style={{ fontSize: portrait ? 9 : 11, color: 'rgba(255,255,255,.78)' }}>
+          Full Stack Website Developer · Philippines
         </span>
       </div>
       <div className="flex-1" />
       <div className="relative z-10 flex flex-col gap-2">
-        {notes.map((p, i) => (
-          <div key={p.id} className="rounded-2xl bg-white/75 backdrop-blur-2xl border border-white/90 shadow-[0_8px_20px_rgba(0,0,0,0.06)] p-2.5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-black/10">
-              <img src={p.imageUrl} alt="" className="w-full h-full object-cover" draggable={false} />
-            </div>
-            <div className="flex flex-col text-left min-w-0">
-              <span className="text-[13px] font-semibold text-black leading-tight truncate">
-                {i === 0 ? `${p.title} is live` : `${p.title} — shipped`}
-              </span>
-              <span className="text-[10px] text-black/55 tracking-wider uppercase mt-0.5 truncate">
-                {p.category} · {i === 0 ? 'now' : '2h ago'}
-              </span>
+        {notes.map((m) => (
+          <div key={m.from} className="ios-glass rounded-[24px] px-3 py-2.5 flex items-center gap-3 text-white">
+            <MessagesIcon size={38} />
+            <div className="flex flex-col text-left min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[13px] font-semibold leading-tight truncate flex-1">{m.from}</span>
+                <span className="text-[11px] text-white/60 shrink-0">{m.when}</span>
+              </div>
+              <span className="text-[12px] text-white/85 leading-snug mt-0.5 line-clamp-2">{m.text}</span>
             </div>
           </div>
         ))}
       </div>
-      <div className="relative z-10 flex items-center justify-between" style={{ marginTop: portrait ? 10 : 14 }}>
-        <span className="w-11 h-11 rounded-full bg-white/85 backdrop-blur-md border border-white/90 flex items-center justify-center text-black/70">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+      {/* Flashlight / swipe hint / camera, then the home indicator */}
+      <div className="relative z-10 flex items-center justify-between text-white" style={{ marginTop: portrait ? 10 : 16 }}>
+        <span className="ios-glass w-11 h-11 rounded-full flex items-center justify-center">
+          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" viewBox="0 0 24 24">
+            <path d="M8 2.5h8v3.2l-2 3V20a2 2 0 0 1-4 0V8.7l-2-3z" />
+            <path d="M12 12.5v2" strokeLinecap="round" />
           </svg>
         </span>
-        <span className="px-5 py-2.5 rounded-full bg-white/90 backdrop-blur-md border border-white/90 text-[12px] font-medium text-black tracking-tight">
-          Scroll to unfold
-        </span>
-        <span className="w-11 h-11 rounded-full bg-white/85 backdrop-blur-md border border-white/90 flex items-center justify-center text-black/70">
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        <span className="text-[12px] font-medium tracking-tight text-white/80">Scroll to unfold</span>
+        <span className="ios-glass w-11 h-11 rounded-full flex items-center justify-center">
+          <svg className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" viewBox="0 0 24 24">
+            <path d="M4 7.5h3l1.8-2.5h6.4L17 7.5h3a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5z" />
+            <circle cx="12" cy="13" r="3.6" />
           </svg>
         </span>
+      </div>
+      <div className="relative z-10 mx-auto rounded-full bg-white/90" style={{ width: portrait ? 110 : 130, height: 5, marginTop: portrait ? 8 : 12 }} />
+    </div>
+  );
+};
+
+// iOS contact monogram (gray gradient circle with initials).
+const Monogram: React.FC<{ size: number; className?: string }> = ({ size, className = '' }) => (
+  <span
+    className={`rounded-full flex items-center justify-center text-white font-semibold shrink-0 ${className}`}
+    style={{
+      width: size,
+      height: size,
+      fontSize: size * 0.4,
+      letterSpacing: '-0.02em',
+      background: 'linear-gradient(180deg, #a9aebb 0%, #878b97 100%)',
+    }}
+  >
+    GW
+  </span>
+);
+
+const PhoneGlyph: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
+  </svg>
+);
+
+// iOS "slide to answer": drag the knob to the end of the track to fire onDone.
+const SlideToAnswer: React.FC<{ label: string; onDone: () => void; height: number }> = ({ label, onDone, height }) => {
+  const track = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ start: number; ratio: number } | null>(null);
+  const [x, setX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const pad = 5;
+  const knob = height - pad * 2;
+  const max = () => Math.max(1, (track.current?.clientWidth ?? 0) - knob - pad * 2);
+
+  const finish = () => {
+    setX(max());
+    window.setTimeout(onDone, 180);
+  };
+  const onDown = (e: React.PointerEvent) => {
+    const t = track.current;
+    if (!t) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // The device is CSS-scaled, so convert screen pixels back to local pixels.
+    const ratio = t.getBoundingClientRect().width / t.clientWidth || 1;
+    drag.current = { start: e.clientX / ratio - x, ratio };
+    setDragging(true);
+  };
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    setX(clamp(e.clientX / d.ratio - d.start, 0, max()));
+  };
+  const onUp = () => {
+    if (!drag.current) return;
+    drag.current = null;
+    setDragging(false);
+    if (x > max() * 0.82) finish();
+    else setX(0);
+  };
+  const progress = x / max();
+
+  return (
+    <div
+      ref={track}
+      className="relative w-full rounded-full select-none"
+      style={{
+        height,
+        background: 'rgba(255,255,255,.13)',
+        backdropFilter: 'blur(30px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(30px) saturate(160%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 .5px rgba(255,255,255,.1)',
+      }}
+    >
+      {/* Label is clipped at the knob's leading edge, so the knob "wipes" it away like on iOS */}
+      <span
+        className="slide-shimmer absolute inset-0 flex items-center justify-center font-normal tracking-[-0.01em] pointer-events-none"
+        style={{
+          fontSize: height * 0.29,
+          paddingLeft: knob,
+          opacity: Math.max(0, 1 - progress * 1.4),
+          clipPath: `inset(0 0 0 ${x + knob + pad}px)`,
+        }}
+      >
+        {label}
+      </span>
+      <button
+        type="button"
+        aria-label={label}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            finish();
+          }
+        }}
+        className="absolute rounded-full bg-white flex items-center justify-center text-[#34c759] cursor-grab active:cursor-grabbing touch-none outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+        style={{
+          boxShadow: '0 1px 2px rgba(0,0,0,.12), 0 4px 14px rgba(0,0,0,.22)',
+          top: pad,
+          left: pad,
+          width: knob,
+          height: knob,
+          transform: `translateX(${x}px)`,
+          transition: dragging ? 'none' : `transform .45s ${EASE}`,
+        }}
+      >
+        <PhoneGlyph className="w-[44%] h-[44%]" />
+      </button>
+    </div>
+  );
+};
+
+type ChatMsg = { from: 'me' | 'gene'; text: string };
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// Serverless function (api/contact.js) that emails the message to you via Nodemailer.
+// If it fails, sending falls back to opening the visitor's email app with everything filled in.
+const CONTACT_ENDPOINT: string = import.meta.env.VITE_CONTACT_ENDPOINT || '/api/contact';
+
+type ChatStep = 'subject' | 'details' | 'email' | 'sending' | 'done' | 'note' | 'noteSending';
+
+// iMessage-style thread. Gene asks what they want to build (→ email subject), for more detail
+// (→ body) and for their email (→ reply-to), then sends it all via api/contact.js. Afterwards the
+// thread locks; a glass prompt offers one follow-up note (threaded onto the same email) before
+// handing back to the lock screen via onFinish.
+const ChatScreen: React.FC<{
+  email?: string;
+  portrait: boolean;
+  time: string;
+  onBack: () => void;
+  onFinish: () => void;
+  active: boolean;
+}> = ({ email, portrait, time, onBack, onFinish, active }) => {
+  const [msgs, setMsgs] = useState<ChatMsg[]>([]);
+  const [typing, setTyping] = useState(false);
+  const [step, setStep] = useState<ChatStep>('subject');
+  const [draft, setDraft] = useState('');
+  const [delivered, setDelivered] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const answers = useRef({ subject: '', details: '', from: '', messageId: '' });
+  const started = useRef(false);
+  const list = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const timers = useRef<number[]>([]);
+
+  const later = (fn: () => void, ms: number) => {
+    timers.current.push(window.setTimeout(fn, ms));
+  };
+
+  // Queues Gene's lines with a typing indicator; returns when the last one lands (ms from now).
+  const geneSays = (lines: string[], delay = 0) => {
+    lines.forEach((text, i) => {
+      const at = delay + i * 1100;
+      later(() => setTyping(true), at);
+      later(() => {
+        setTyping(false);
+        setMsgs((m) => [...m, { from: 'gene', text }]);
+      }, at + 900);
+    });
+    return delay + (lines.length - 1) * 1100 + 900;
+  };
+
+  useEffect(() => {
+    if (!active || started.current) return;
+    started.current = true;
+    geneSays(['Hi, nice to meet you! 👋', 'What would you like to build? Tell me about it.'], 500);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  useEffect(() => {
+    const l = list.current;
+    if (l) l.scrollTo({ top: l.scrollHeight, behavior: 'smooth' });
+  }, [msgs, typing]);
+
+  const post = async (payload: Record<string, string | boolean>) => {
+    try {
+      const res = await fetch(CONTACT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => ({}));
+      return { id: typeof data.id === 'string' ? data.id : '' };
+    } catch {
+      return null;
+    }
+  };
+
+  // Server unavailable: hand the visitor a pre-filled email so nothing is lost.
+  const mailFallback = (subject: string, text: string) => {
+    if (!email) return;
+    const body = encodeURIComponent(`${text}\n\nReply to: ${answers.current.from}`);
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${body}`;
+  };
+
+  const deliver = async () => {
+    const { subject, details, from } = answers.current;
+    setTyping(true);
+    const [sent] = await Promise.all([
+      post({ email: from, subject, message: details }),
+      new Promise((r) => window.setTimeout(r, 1200)),
+    ]);
+    setTyping(false);
+    setStep('done');
+
+    if (sent) {
+      answers.current.messageId = sent.id;
+      setDelivered(true);
+      const t = geneSays(
+        [
+          "Thank you! I've received your message 🙌",
+          "I'll get back to you soon. Please check your email from time to time, I usually reply within 24–48 hours.",
+        ],
+        200,
+      );
+      later(() => setAsk(true), t + 900);
+      return;
+    }
+    mailFallback(subject, details);
+    const t = geneSays(["Sorry, my inbox didn't catch that one. Your email app should open with everything filled in, just hit send 🙏"], 200);
+    later(onFinish, t + 3200);
+  };
+
+  const deliverNote = async (note: string) => {
+    const { subject, from, messageId } = answers.current;
+    setTyping(true);
+    const [sent] = await Promise.all([
+      post({ email: from, subject, message: note, followup: true, inReplyTo: messageId }),
+      new Promise((r) => window.setTimeout(r, 1000)),
+    ]);
+    setTyping(false);
+    setStep('done');
+    if (sent) {
+      setDelivered(true);
+      const t = geneSays(["Got it, I've added that to your message 👍", 'Thanks again, talk soon!'], 200);
+      later(onFinish, t + 1800);
+    } else {
+      mailFallback(`Re: ${subject}`, note);
+      const t = geneSays(["Sorry, that one didn't go through. Your email app should open so you can send it directly 🙏"], 200);
+      later(onFinish, t + 3200);
+    }
+  };
+
+  const addNote = () => {
+    setAsk(false);
+    const t = geneSays(['Sure! What else should I know?'], 250);
+    later(() => {
+      setStep('note');
+      later(() => input.current?.focus({ preventScroll: true }), 50);
+    }, t);
+  };
+
+  const allSet = () => {
+    setAsk(false);
+    const t = geneSays(['Thanks again, talk soon! 👋'], 250);
+    later(onFinish, t + 1400);
+  };
+
+  const canType = step === 'subject' || step === 'details' || step === 'email' || step === 'note';
+
+  const send = () => {
+    const text = draft.trim();
+    if (!text || !canType) return;
+    setDraft('');
+    setDelivered(false);
+    setMsgs((m) => [...m, { from: 'me', text }]);
+
+    if (step === 'subject') {
+      answers.current.subject = text;
+      setStep('details');
+      geneSays(['Thank you! To help me understand it better, can you explain it a bit more?'], 500);
+    } else if (step === 'details') {
+      answers.current.details = text;
+      setStep('email');
+      geneSays(['Got it. May I know your active email?'], 500);
+    } else if (step === 'email') {
+      if (!EMAIL_RE.test(text)) {
+        geneSays(["Hmm, that doesn't look like an email. Mind checking it?"], 500);
+        return;
+      }
+      answers.current.from = text;
+      setStep('sending');
+      void deliver();
+    } else if (step === 'note') {
+      setStep('noteSending');
+      void deliverNote(text);
+    }
+  };
+
+  const lastMe = msgs.map((m) => m.from).lastIndexOf('me');
+  const s = portrait ? 0.86 : 1;
+  const placeholder = step === 'email' ? 'Your active email' : step === 'note' ? 'Add a note' : 'iMessage';
+
+  return (
+    <div className="absolute inset-0 flex flex-col bg-white text-black overflow-hidden" style={{ ['--chat-bg' as string]: '#ffffff' }}>
+      {/* status bar */}
+      <div className="flex items-center justify-between shrink-0 font-semibold" style={{ padding: portrait ? '8px 18px 0' : '14px 24px 0', fontSize: 13 * s }}>
+        <span>{time}</span>
+        <svg width="25" height="12" viewBox="0 0 25 12" aria-hidden="true">
+          <rect x="0.75" y="0.75" width="21.5" height="10.5" rx="3.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <rect x="2.75" y="2.75" width="13.5" height="6.5" rx="1.5" fill="currentColor" />
+          <rect x="23.25" y="4.25" width="1.5" height="3.5" rx="0.75" fill="currentColor" opacity="0.55" />
+        </svg>
+      </div>
+
+      {/* header */}
+      <div className="relative shrink-0 flex flex-col items-center" style={{ paddingTop: portrait ? 4 : 10 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to call"
+          className="absolute left-3 top-2 w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-[0_2px_14px_rgba(0,0,0,.12)] border border-black/5"
+          style={{ transform: `scale(${s})` }}
+        >
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M8 2 2 8l6 6" />
+          </svg>
+        </button>
+        <Monogram size={portrait ? 40 : 56} />
+        <span
+          className="-mt-1.5 relative px-3 py-1 rounded-full bg-white shadow-[0_2px_14px_rgba(0,0,0,.1)] border border-black/5 font-semibold tracking-[-0.01em] flex items-center gap-1"
+          style={{ fontSize: 14 * s }}
+        >
+          Gene Wagas
+          <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeOpacity=".35" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+            <path d="m1 1 4 4-4 4" />
+          </svg>
+        </span>
+      </div>
+
+      {/* thread */}
+      <div ref={list} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col gap-[3px] px-4" style={{ paddingTop: portrait ? 8 : 14, paddingBottom: 8, fontSize: 15 * s }}>
+        <p className="text-center text-black/45 leading-tight mb-2" style={{ fontSize: 11 * s }}>
+          iMessage
+          <br />
+          Today {time}
+        </p>
+        {msgs.map((m, i) => {
+          const tail = msgs[i + 1]?.from !== m.from && !(typing && m.from === 'gene' && i === msgs.length - 1);
+          return (
+            <React.Fragment key={i}>
+              <div className={`imsg ${m.from === 'me' ? 'imsg-out' : 'imsg-in'} ${tail ? 'tail' : ''} ${msgs[i - 1] && msgs[i - 1].from !== m.from ? 'mt-2' : ''}`}>
+                {m.text}
+              </div>
+              {i === lastMe && delivered && (
+                <span className="self-end text-black/45 font-medium -mt-px mr-1" style={{ fontSize: 11 * s }}>
+                  Delivered
+                </span>
+              )}
+            </React.Fragment>
+          );
+        })}
+        {typing && (
+          <div className="imsg imsg-in tail imsg-typing mt-1" aria-label="Gene is typing">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+      </div>
+
+      {/* composer */}
+      <form
+        className="shrink-0 flex items-center gap-2"
+        style={{ padding: portrait ? '6px 10px 10px' : '8px 14px 18px' }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          send();
+        }}
+      >
+        <span className="w-9 h-9 rounded-full bg-[#f2f2f4] flex items-center justify-center text-black/70 shrink-0" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M8 2v12M2 8h12" />
+          </svg>
+        </span>
+        <div className="flex-1 flex items-center rounded-full border border-black/10 bg-white pl-3.5 pr-1 h-9 min-w-0">
+          <input
+            ref={input}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            disabled={!canType}
+            type={step === 'email' ? 'email' : 'text'}
+            inputMode={step === 'email' ? 'email' : 'text'}
+            autoComplete={step === 'email' ? 'email' : 'off'}
+            placeholder={placeholder}
+            aria-label={placeholder}
+            className="flex-1 min-w-0 bg-transparent outline-none placeholder:text-black/35 disabled:opacity-50"
+            style={{ fontSize: 15 * s }}
+          />
+          {draft.trim() && canType ? (
+            <button type="submit" aria-label="Send" className="w-7 h-7 rounded-full bg-[#0a84ff] text-white flex items-center justify-center shrink-0">
+              <svg width="12" height="14" viewBox="0 0 12 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 13V1.5M1 6.5l5-5 5 5" />
+              </svg>
+            </button>
+          ) : (
+            <svg className="mr-2 text-black/35 shrink-0" width="12" height="17" viewBox="0 0 12 17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <rect x="3" y="1" width="6" height="10" rx="3" />
+              <path d="M1 8a5 5 0 0 0 10 0M6 13v3" />
+            </svg>
+          )}
+        </div>
+      </form>
+
+      {/* "Anything else?" glass prompt over a blurred thread */}
+      <div
+        className="absolute inset-0 z-20 flex items-end justify-center"
+        style={{
+          padding: portrait ? 10 : 18,
+          background: ask ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,0)',
+          backdropFilter: ask ? 'blur(8px)' : 'blur(0px)',
+          WebkitBackdropFilter: ask ? 'blur(8px)' : 'blur(0px)',
+          opacity: ask ? 1 : 0,
+          pointerEvents: ask ? 'auto' : 'none',
+          transition: `opacity .45s ease, background .45s ease, backdrop-filter .45s ease`,
+        }}
+        aria-hidden={!ask}
+      >
+        <div
+          role="dialog"
+          aria-label="Anything else I should know?"
+          className="w-full rounded-[26px] bg-white/80 border border-white text-center shadow-[0_18px_50px_rgba(0,0,0,.18)]"
+          style={{
+            padding: portrait ? '16px 14px 12px' : '22px 20px 16px',
+            backdropFilter: 'blur(24px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+            transform: ask ? 'translateY(0) scale(1)' : 'translateY(16px) scale(.97)',
+            filter: ask ? 'blur(0px)' : 'blur(6px)',
+            transition: `transform .55s ${EASE}, filter .45s ease`,
+          }}
+        >
+          <Monogram size={portrait ? 34 : 42} className="mx-auto" />
+          <p className="font-semibold tracking-[-0.01em] mt-2" style={{ fontSize: 16 * s }}>
+            Anything else I should know?
+          </p>
+          <p className="text-black/55 leading-snug mt-1 mx-auto max-w-[280px]" style={{ fontSize: 13 * s }}>
+            Add a note and I'll attach it to the message you just sent.
+          </p>
+          <button
+            type="button"
+            onClick={addNote}
+            tabIndex={ask ? 0 : -1}
+            className="w-full rounded-full bg-[#0a84ff] text-white font-semibold active:opacity-80 transition-opacity"
+            style={{ marginTop: portrait ? 12 : 16, height: portrait ? 38 : 44, fontSize: 15 * s }}
+          >
+            Add a note
+          </button>
+          <button
+            type="button"
+            onClick={allSet}
+            tabIndex={ask ? 0 : -1}
+            className="w-full rounded-full text-[#0a84ff] font-medium active:opacity-60 transition-opacity"
+            style={{ marginTop: 4, height: portrait ? 34 : 40, fontSize: 15 * s }}
+          >
+            No, I'm all set
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-const CallScreen: React.FC<{ email?: string; portrait: boolean }> = ({ email, portrait }) => (
-  <div className="absolute inset-0 flex flex-col items-center text-center overflow-hidden" style={{ padding: portrait ? '22px 16px 16px' : '48px 24px 26px' }}>
-    <img src="/images/fold-portrait.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-top scale-110 blur-md" draggable={false} />
-    <div className="absolute inset-0 bg-black/45" />
-    <div className="relative z-10 flex flex-col items-center">
-      <span className="text-white/70 font-medium tracking-tight" style={{ fontSize: portrait ? 11 : 13 }}>
-        Incoming call · about your next project
-      </span>
-      <h3 className="text-white font-semibold tracking-[-0.04em] mt-2 leading-none" style={{ fontSize: portrait ? 32 : 44 }}>
-        Gene Wagas
-      </h3>
-    </div>
-    {!portrait && (
-      <div className="relative z-10 mt-8 w-28 h-28 rounded-full overflow-hidden ring-4 ring-white/20">
-        <img src="/images/fold-portrait.jpg" alt="" className="w-full h-full object-cover object-top" draggable={false} />
-      </div>
-    )}
-    <div className="flex-1" />
-    <a
-      href="#contact"
-      className="relative z-10 w-full flex items-center gap-3 rounded-full bg-white/20 backdrop-blur-xl border border-white/25 p-1.5 pr-5 text-white group"
-    >
-      <span className="w-11 h-11 rounded-full bg-[#34c759] flex items-center justify-center transition-transform duration-500 group-hover:translate-x-2" style={{ transitionTimingFunction: EASE }}>
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
-        </svg>
-      </span>
-      <span className="flex-1 text-center text-[14px] font-medium tracking-tight text-white/90">slide to talk</span>
-    </a>
-    {email && (
-      <a href={`mailto:${email}`} className="relative z-10 mt-3 text-[12px] text-white/70 hover:text-white transition-colors">
-        {email}
-      </a>
-    )}
-  </div>
-);
+const CallScreen: React.FC<{ email?: string; portrait: boolean; time: string; openSignal: number }> = ({
+  email,
+  portrait,
+  time,
+  openSignal,
+}) => {
+  const [chat, setChat] = useState(false);
+  const [ended, setEnded] = useState(false); // conversation finished → back to the lock screen
+  const [round, setRound] = useState(0); // remounts the slider so it resets after "back"
 
-// The page shown across both inner screens. In landscape the hinge sits dead-center,
-// so content is laid out in two columns with a gutter straddling the fold.
-const ScreenPage: React.FC<{
-  projects: ProjectItem[];
-  services: ServiceItem[];
-  roles: string[];
-  email?: string;
-  portrait: boolean;
-}> = ({ projects, services, roles, email, portrait }) => {
-  const pad = portrait ? 'px-5' : 'px-10';
-  const cols = portrait ? 'grid grid-cols-1 gap-y-4' : 'grid grid-cols-2 gap-x-20 gap-y-8';
-  const label = 'text-[11px] font-medium uppercase tracking-[0.14em] text-black/45';
+  // Opened from a CTA elsewhere on the page (see lib/phoneChat).
+  useEffect(() => {
+    if (openSignal) setChat(true);
+  }, [openSignal]);
+  const out: React.CSSProperties = { opacity: 0, filter: 'blur(16px)', transform: 'scale(1.06)', pointerEvents: 'none' };
+  const inn: React.CSSProperties = { opacity: 0, filter: 'blur(16px)', transform: 'scale(.97)', pointerEvents: 'none' };
+  const show: React.CSSProperties = { opacity: 1, filter: 'blur(0px)', transform: 'none' };
+  const fx = `opacity .55s ease, filter .6s ${EASE}, transform .7s ${EASE}`;
 
   return (
-    <div className={`text-[#111] ${pad}`} style={{ paddingTop: portrait ? 52 : 64, paddingBottom: portrait ? 90 : 110 }}>
-      {/* Intro */}
-      <div className={cols} style={{ minHeight: portrait ? 300 : 520, alignContent: 'end' }}>
-        <div className="flex flex-col justify-end">
-          <p className={label}>Full stack developer — Philippines</p>
-          <h2 className="font-black tracking-[-0.065em] leading-[0.85] mt-3" style={{ fontSize: portrait ? 76 : 132 }}>
-            Gene
-          </h2>
-        </div>
-        <div className="flex flex-col justify-end">
-          <h2 className="font-black tracking-[-0.065em] leading-[0.85]" style={{ fontSize: portrait ? 76 : 132 }}>
-            Wagas
-          </h2>
-        </div>
-        <p className="text-[15px] leading-[1.45] text-black/70 max-w-[360px]">
-          I build websites, CRM platforms and automated workflows for businesses that would rather run smoothly than explain why they don't.
-        </p>
-        <div className="flex items-start gap-2">
-          <a href="#about" className="px-5 py-3 rounded-full bg-[#111] text-white text-[13px] font-medium tracking-tight hover:-translate-y-0.5 transition-transform">
-            About me ↗
-          </a>
-          <a href="#contact" className="px-5 py-3 rounded-full bg-black/5 text-[13px] font-medium tracking-tight hover:bg-black/10 transition-colors">
-            Say hello
-          </a>
-        </div>
-      </div>
-
-      {/* Roles */}
-      {roles.length > 0 && (
-        <div className={`${cols} border-t border-black/10`} style={{ marginTop: portrait ? 40 : 64, paddingTop: portrait ? 20 : 28 }}>
-          {roles.map((r, i) => (
-            <div key={r} className="flex items-baseline gap-4">
-              <span className="text-[44px] font-black tracking-[-0.06em] leading-none">0{i + 1}</span>
-              <span className="text-[13px] uppercase tracking-[0.12em] text-black/60">{r}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Selected work */}
-      <div className={`${cols} items-end`} style={{ marginTop: portrait ? 56 : 96 }}>
-        <h3 className="font-black tracking-[-0.055em] leading-none" style={{ fontSize: portrait ? 40 : 56 }}>
-          Selected work
-        </h3>
-        <div className={`flex items-end ${portrait ? 'justify-start' : 'justify-end'}`}>
-          <span className={label}>({String(projects.length).padStart(2, '0')}) projects</span>
-        </div>
-      </div>
-      <div className={cols} style={{ marginTop: portrait ? 20 : 32 }}>
-        {projects.map((p, i) => (
-          <a key={p.id} href={p.link || '#works'} className="group block hover:-translate-y-1 transition-transform duration-500" style={{ transitionTimingFunction: EASE }}>
-            <div className="overflow-hidden rounded-[18px] bg-black/5 aspect-[4/3]">
-              <img
-                src={p.imageUrl}
-                alt={p.title}
-                className="w-full h-full object-cover transition-transform duration-[900ms] group-hover:scale-[1.06]"
-                style={{ transitionTimingFunction: EASE }}
-                draggable={false}
-              />
-            </div>
-            <div className="flex items-baseline justify-between mt-3">
-              <div>
-                <span className={label}>
-                  {String(i + 1).padStart(2, '0')} · {p.category}
-                </span>
-                <h4 className="text-[24px] font-bold tracking-[-0.04em] leading-tight mt-1">{p.title}</h4>
-              </div>
-              <span className="text-[13px] text-black/50">{p.year}</span>
-            </div>
-          </a>
-        ))}
-      </div>
-
-      {/* Services */}
-      {services.length > 0 && (
-        <>
-          <h3 className="font-black tracking-[-0.055em] leading-none" style={{ fontSize: portrait ? 40 : 56, marginTop: portrait ? 64 : 110 }}>
-            Services
+    <div className="absolute inset-0 overflow-hidden bg-black">
+      {/* incoming call */}
+      <div
+        className="absolute inset-0 flex flex-col items-center text-center"
+        style={{ padding: portrait ? '22px 16px 18px' : '56px 24px 34px', transition: fx, ...(chat || ended ? out : show) }}
+      >
+        <img src={WALLPAPER} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" draggable={false} />
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="relative z-10 flex flex-col items-center">
+          <span className="text-white/65 font-medium tracking-tight" style={{ fontSize: portrait ? 12 : 15 }}>
+            Incoming call · about your next project
+          </span>
+          <h3 className="text-white font-semibold tracking-[-0.03em] mt-1.5 leading-none" style={{ fontSize: portrait ? 32 : 46 }}>
+            Gene Wagas
           </h3>
-          <div className={`${cols}`} style={{ marginTop: portrait ? 16 : 28, rowGap: 0 }}>
-            {services.map((s) => (
-              <div key={s.id} className="border-t border-black/10 py-4 flex gap-4 hover:translate-x-2 transition-transform duration-500" style={{ transitionTimingFunction: EASE }}>
-                <span className="text-[12px] text-black/40 pt-1 w-6 shrink-0">{s.number}</span>
-                <div>
-                  <h4 className="text-[17px] font-semibold tracking-[-0.02em] leading-snug">{s.title}</h4>
-                  {s.description && <p className="text-[13px] text-black/55 leading-[1.45] mt-1">{s.description}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* CTA */}
-      <div className={`${cols} items-end`} style={{ marginTop: portrait ? 64 : 110 }}>
-        <h3 className="font-black tracking-[-0.055em] leading-[0.95]" style={{ fontSize: portrait ? 40 : 52 }}>
-          Have a project that needs building?
-        </h3>
-        <div className={`flex flex-col gap-3 ${portrait ? 'items-start' : 'items-end'}`}>
-          <a href="#contact" className="px-6 py-3.5 rounded-full bg-[#111] text-white text-[14px] font-medium tracking-tight hover:-translate-y-0.5 transition-transform">
-            Start a project ↗
+        </div>
+        {!portrait && <Monogram size={112} className="relative z-10 mt-9 text-[44px] ring-4 ring-white/15" />}
+        <div className="flex-1" />
+        <div className="relative z-10 w-full">
+          <SlideToAnswer key={round} label="slide to message" height={portrait ? 52 : 62} onDone={() => setChat(true)} />
+        </div>
+        {email && (
+          <a href={`mailto:${email}`} className="relative z-10 mt-3 text-[12px] text-white/60 hover:text-white transition-colors">
+            {email}
           </a>
-          {email && (
-            <a href={`mailto:${email}`} className="text-[13px] text-black/55 hover:text-black transition-colors">
-              {email}
-            </a>
-          )}
+        )}
+      </div>
+
+      {/* iMessage thread */}
+      <div className="absolute inset-0" style={{ transition: fx, transitionDelay: chat && !ended ? '.12s' : '0s', ...(ended ? out : chat ? show : inn) }}>
+        <ChatScreen
+          email={email}
+          portrait={portrait}
+          time={time}
+          active={chat}
+          onBack={() => {
+            setChat(false);
+            setRound((r) => r + 1);
+          }}
+          onFinish={() => setEnded(true)}
+        />
+      </div>
+
+      {/* back to the lock screen, with Gene's reply waiting as a notification */}
+      <div className="absolute inset-0" style={{ transition: fx, transitionDelay: ended ? '.15s' : '0s', ...(ended ? show : inn) }}>
+        {ended && <LockScreen time={time} portrait={portrait} messages={SENT_MESSAGES} />}
+      </div>
+    </div>
+  );
+};
+
+// The page shown across both inner screens: a short intro, then one calm chapter per
+// project. In landscape the hinge sits dead-center, so content is laid out in two
+// columns with a gutter straddling the fold.
+const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: boolean }> = ({ projects, portrait, lit }) => {
+  const pad = portrait ? 'px-5' : 'px-10';
+  const cols = portrait ? 'grid grid-cols-1 gap-y-6' : 'grid grid-cols-2 gap-x-20';
+  const label = 'text-[11px] font-medium uppercase tracking-[0.14em] text-black/45';
+  const body = 'text-[15px] leading-[1.6] text-black/65 max-w-[360px] text-justify hyphens-auto';
+  const gap = portrait ? 64 : 104; // space between project chapters
+
+  return (
+    <div className={`text-[#111] ${pad}`} style={{ paddingTop: portrait ? 52 : 64, paddingBottom: portrait ? 100 : 140 }}>
+      {/* Intro */}
+      <div className={cols} style={{ minHeight: portrait ? 300 : 440, alignContent: 'end', rowGap: portrait ? 24 : 40 }}>
+        {/* Headline reads across the fold in landscape: "I turn ideas | into reality." */}
+        {portrait ? (
+          <div className="flex flex-col justify-end">
+            <p className={label}>Full stack website developer — Philippines</p>
+            <div className="flex items-center gap-3 mt-3">
+              <h2 className="font-black tracking-[-0.06em] leading-[0.9]" style={{ fontSize: 52 }}>
+                I turn ideas into reality.
+              </h2>
+              <IdeaBulb on={lit} height={104} />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col justify-end">
+              <p className={label}>Full stack website developer — Philippines</p>
+              <div className="flex items-center gap-5 mt-4">
+                <h2 className="font-black tracking-[-0.06em] leading-[0.88]" style={{ fontSize: 88 }}>
+                  I turn
+                  <br />
+                  ideas
+                </h2>
+                <IdeaBulb on={lit} height={150} />
+              </div>
+            </div>
+            <div className="flex flex-col justify-end">
+              <h2 className="font-black tracking-[-0.06em] leading-[0.88]" style={{ fontSize: 88 }}>
+                into
+                <br />
+                reality.
+              </h2>
+            </div>
+          </>
+        )}
+        <p className={body}>
+          I'm Gene, a full stack web developer. I take an idea from a rough sketch to a website that works, looks sharp and is
+          ready for real people to use.
+        </p>
+        <div className="flex flex-col max-w-[360px]">
+          <p className={label}>How I work</p>
+          <p className={`${body} mt-2`}>
+            AI is part of my toolkit. I build with Claude, Codex, Antigravity and Cursor, and I like testing which model handles
+            each task best. Good prompt engineering lets me plan, prototype and debug faster, so more of my time goes into the
+            details that need a human eye.
+          </p>
         </div>
       </div>
+
+      {/* Scroll cue — sits inside the first screenful so it's visible as soon as the device opens */}
+      <p className={`${label} flex items-center gap-2`} style={{ marginTop: portrait ? 32 : 44 }}>
+        A few proofs of concept, and the story behind each
+        <span className="inline-block animate-bounce text-black/60">↓</span>
+      </p>
+
+      {/* One chapter per project */}
+      {projects.map((p, i) => (
+        <article key={p.id} className={`${cols} items-center`} style={{ marginTop: i === 0 ? (portrait ? 28 : 40) : gap }}>
+          <div className="flex flex-col">
+            <span className={label}>
+              {String(i + 1).padStart(2, '0')} — {p.category}
+            </span>
+            <h3 className="font-black tracking-[-0.055em] leading-[0.9] mt-3" style={{ fontSize: portrait ? 44 : 64 }}>
+              {p.title}
+            </h3>
+            {p.description && (
+              <p className={body} style={{ marginTop: portrait ? 14 : 20 }}>
+                {p.description}
+              </p>
+            )}
+            {p.stack && p.stack.length > 0 && (
+              <p className="text-[12px] text-black/40" style={{ marginTop: portrait ? 12 : 16 }}>
+                {p.stack.join(' · ')}
+              </p>
+            )}
+          </div>
+          <div className="overflow-hidden rounded-[18px] bg-black/5 aspect-[4/3]">
+            {p.visual === 'social' ? (
+              <SocialPlan />
+            ) : p.images && p.images.length > 0 ? (
+              <Crossfade images={p.images} alt={p.title} />
+            ) : (
+              p.imageUrl && <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" draggable={false} />
+            )}
+          </div>
+        </article>
+      ))}
+
+      {/* Outro */}
+      <p className={`${label} text-center`} style={{ marginTop: gap }}>
+        More on the way — keep scrolling
+      </p>
     </div>
   );
 };

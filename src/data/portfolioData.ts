@@ -21,27 +21,37 @@ export const portfolioData: PortfolioData = {
   projects: [
     {
       id: 'proj-1',
-      title: 'Avery',
+      title: 'Sample websites',
       category: 'Web Development',
-      imageUrl: '/images/project-1.jpg',
+      // Add more screenshots here; they crossfade one after another.
+      images: ['/images/project-1.jpg'],
       link: '#works',
       year: '2026',
+      description:
+        "A few websites I've designed and built, from simple landing pages to full business sites. Each one is fast, responsive and easy to use on any screen.",
+      stack: ['React', 'TypeScript', 'Tailwind CSS', 'Vite'],
     },
     {
       id: 'proj-2',
-      title: 'Bruce',
-      category: 'UI / UX Design',
-      imageUrl: '/images/project-2.jpg',
+      title: 'Behind the posts',
+      category: 'Social Media Management',
+      visual: 'social',
       link: '#works',
       year: '2026',
+      description:
+        'I help small businesses stay active online. I plan what to post, make the graphics and captions, keep a steady schedule, and reply to comments and messages so customers feel heard.',
+      stack: ['Content planning', 'Graphics & captions', 'Scheduling', 'Community replies'],
     },
     {
       id: 'proj-3',
-      title: 'Concrete',
-      category: 'AI Workflow Integration',
+      title: 'AI Workflow Automation',
+      category: 'Process Automation',
       imageUrl: '/images/project-3.jpg',
       link: '#works',
       year: '2026',
+      description:
+        'Tired of doing the same tasks by hand, or losing hours tallying totals across spreadsheets? I build simple workflow automations that take over the repetitive parts, so you and your team can focus on the work that matters.',
+      stack: ['Task automation', 'Auto-computed totals', 'Reports & reminders', 'Connected tools'],
     },
   ],
   about: {
@@ -185,7 +195,7 @@ export const portfolioData: PortfolioData = {
     { id: 'soc-4', label: 'Instagram', url: 'https://instagram.com' },
   ],
   contacts: {
-    email: 'genewagas@gmail.com',
+    email: 'genemathew232@gmail.com',
     phone: '+63 900 000 0000',
     copyright: '© GENE WAGAS — ALL RIGHTS RESERVED',
   },

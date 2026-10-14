@@ -333,3 +333,151 @@
 .animate-fade-in-up {
   animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* iOS lock screen clock: tall, heavy, rounded numerals with a soft frosted-white fill.
+   SF Pro Rounded on Apple devices, Inter elsewhere. */
+.glass-time {
+  display: inline-block;
+  font-family: 'SF Pro Rounded', ui-rounded, -apple-system, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  transform: scaleY(1.12);
+  transform-origin: 50% 0;
+  color: transparent;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.86) 55%, rgba(255, 255, 255, 0.72) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 1px 1px rgba(0, 10, 40, 0.18)) drop-shadow(0 4px 18px rgba(0, 10, 40, 0.35));
+}
+
+.ios-lock-date {
+  font-family: -apple-system, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 10px rgba(0, 10, 40, 0.35);
+}
+
+/* iOS 26 "Liquid Glass" surface: clear tint, heavy blur, bright specular rim */
+.ios-glass {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.12) 100%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.1),
+    inset 0 0 18px rgba(255, 255, 255, 0.06),
+    0 10px 30px rgba(0, 8, 30, 0.3);
+}
+
+/* Intro light bulb (WorksSection): fades up, flickers on, then rays pop out and the halo breathes */
+.idea-bulb {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(16px) rotate(8deg) scale(0.94);
+  transition: opacity 0.9s ease, transform 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.idea-bulb.is-on {
+  opacity: 1;
+  transform: translateY(0) rotate(8deg) scale(1);
+}
+.idea-bulb .lit,
+.idea-bulb .glow,
+.idea-bulb .ray {
+  opacity: 0;
+}
+.idea-bulb .ray {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0.3);
+}
+.idea-bulb .glow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.idea-bulb.is-on .lit {
+  animation: bulb-flicker 1.1s 0.6s forwards;
+}
+.idea-bulb.is-on .glow {
+  animation: bulb-flicker 1.1s 0.6s forwards, bulb-breathe 3.4s 1.8s ease-in-out infinite;
+}
+.idea-bulb.is-on .ray {
+  animation: bulb-ray 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(1.3s + var(--i) * 70ms);
+}
+@keyframes bulb-flicker {
+  0% { opacity: 0; }
+  12% { opacity: 0.85; }
+  20% { opacity: 0.15; }
+  34% { opacity: 0.95; }
+  42% { opacity: 0.45; }
+  60%, 100% { opacity: 1; }
+}
+@keyframes bulb-ray {
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes bulb-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .idea-bulb, .idea-bulb.is-on { transition: none; }
+  .idea-bulb.is-on .lit, .idea-bulb.is-on .glow, .idea-bulb.is-on .ray { animation: none; opacity: 1; transform: none; }
+}
+
+/* iOS "slide to answer" label shimmer */
+.slide-shimmer {
+  color: transparent;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.45) 35%, #fff 50%, rgba(255, 255, 255, 0.45) 65%, rgba(255, 255, 255, 0.45) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: slide-shimmer 2.6s linear infinite;
+}
+@keyframes slide-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
+}
+
+/* iMessage bubbles. Tails are drawn with two pseudo-elements: a colored curve, then a
+   patch in the thread background (--chat-bg) that carves its inner edge. */
+.imsg {
+  position: relative;
+  max-width: 76%;
+  padding: 7px 12px;
+  border-radius: 18px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.imsg-in { align-self: flex-start; background: #e9e9eb; color: #000; }
+.imsg-out { align-self: flex-end; background: #0a84ff; color: #fff; }
+.imsg.tail::before,
+.imsg.tail::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  height: 18px;
+}
+.imsg-out.tail::before { right: -7px; width: 20px; background: #0a84ff; border-bottom-left-radius: 16px 14px; }
+.imsg-out.tail::after { right: -26px; width: 26px; background: var(--chat-bg, #fff); border-bottom-left-radius: 10px; }
+.imsg-in.tail::before { left: -7px; width: 20px; background: #e9e9eb; border-bottom-right-radius: 16px 14px; }
+.imsg-in.tail::after { left: -26px; width: 26px; background: var(--chat-bg, #fff); border-bottom-right-radius: 10px; }
+
+.imsg-typing { display: flex; gap: 4px; padding: 11px 13px; }
+.imsg-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8e8e93;
+  animation: imsg-dot 1.2s ease-in-out infinite;
+}
+.imsg-typing span:nth-child(2) { animation-delay: 0.15s; }
+.imsg-typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes imsg-dot {
+  0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+}

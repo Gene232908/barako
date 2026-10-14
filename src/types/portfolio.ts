@@ -2,10 +2,15 @@ export interface ProjectItem {
   id: string;
   title: string;
   category: string;
-  imageUrl: string;
+  imageUrl?: string;
+  /** Several screenshots shown as a slow crossfade (takes precedence over imageUrl). */
+  images?: string[];
+  /** Built-in visual used instead of an image. */
+  visual?: 'social';
   link?: string;
   year?: string;
   description?: string;
+  stack?: string[];
 }
 
 export interface ServiceItem {
