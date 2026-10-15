@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RollingLink } from './RollingLink';
+import { CONTACT_HREF, openPhoneChat } from '../lib/phoneChat';
 
 interface NavbarProps {
   logoText: string;
@@ -139,7 +140,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <a
               key={link.label}
               href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                if (link.href === CONTACT_HREF) {
+                  e.preventDefault();
+                  // Wait for the drawer to release the body scroll lock before gliding to the phone.
+                  requestAnimationFrame(openPhoneChat);
+                }
+              }}
               className={`font-footer-big text-white/90 hover:text-white transition-all transform hover:-translate-x-3 text-right font-medium tracking-[-0.06em] select-none ${
                 mobileMenuOpen ? 'animate-drawer-link' : 'opacity-0'
               }`}

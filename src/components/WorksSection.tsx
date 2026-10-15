@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ProjectItem } from '../types/portfolio';
 import { OPEN_PHONE_CHAT } from '../lib/phoneChat';
 
@@ -797,38 +798,174 @@ const IdeaBulb: React.FC<{ on: boolean; height: number }> = ({ on, height }) => 
   );
 };
 
-// Slow crossfade through a project's screenshots, with small progress dots.
+// Soft-blur slideshow through a project's screenshots, with small progress dots.
+// Keep the screenshots the same aspect ratio so every slide is framed alike in the card.
+const SLIDE_MS = 2000;
 const Crossfade: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
   const [i, setI] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  // Keeps running while the lightbox is open: the screen is rendered once per fold half, and
+  // both copies must stay on the same slide.
   useEffect(() => {
     if (images.length < 2) return;
-    const id = window.setInterval(() => setI((n) => (n + 1) % images.length), 3800);
+    const id = window.setInterval(() => setI((n) => (n + 1) % images.length), SLIDE_MS);
     return () => window.clearInterval(id);
   }, [images.length]);
   return (
-    <div className="relative w-full h-full">
-      {images.map((src, n) => (
-        <img
-          key={src}
-          src={src}
-          alt={n === i ? alt : ''}
-          draggable={false}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: n === i ? 1 : 0, transition: 'opacity 1.1s ease' }}
-        />
-      ))}
+    <button
+      type="button"
+      onClick={() => setZoom(true)}
+      aria-label={`View ${alt} full size`}
+      className="relative block w-full h-full cursor-zoom-in"
+    >
+      {images.map((src, n) => {
+        const on = n === i;
+        return (
+          <img
+            key={src}
+            src={src}
+            alt={on ? alt : ''}
+            draggable={false}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              // Slightly above center keeps the device mockups framed in the 4:3 card.
+              objectPosition: '50% 45%',
+              opacity: on ? 1 : 0,
+              filter: on ? 'blur(0px)' : 'blur(10px)',
+              transform: on ? 'scale(1)' : 'scale(1.04)',
+              transition: `opacity .9s ${EASE}, filter .9s ${EASE}, transform 1.6s ${EASE}`,
+            }}
+          />
+        );
+      })}
       {images.length > 1 && (
         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
           {images.map((src, n) => (
             <span
               key={src}
-              className="h-1.5 rounded-full bg-white shadow-[0_0_4px_rgba(0,0,0,.3)]"
-              style={{ width: n === i ? 16 : 6, opacity: n === i ? 1 : 0.6, transition: 'width .4s ease, opacity .4s ease' }}
+              className="h-1.5 rounded-full bg-black"
+              style={{ width: n === i ? 16 : 6, opacity: n === i ? 0.7 : 0.2, transition: `width .5s ${EASE}, opacity .5s ${EASE}` }}
             />
           ))}
         </div>
       )}
-    </div>
+      {zoom && <Lightbox images={images} alt={alt} start={i} onClose={() => setZoom(false)} />}
+    </button>
+  );
+};
+
+// Full-screen viewer for a project's screenshots. Portaled to <body> so the phone's 3D transforms
+// don't trap it; Esc / backdrop closes, arrow keys or swipes step through.
+const Lightbox: React.FC<{
+  images: string[];
+  alt: string;
+  start: number;
+  onClose: () => void;
+}> = ({ images, alt, start, onClose }) => {
+  const [index, setIndex] = useState(start);
+  const [shown, setShown] = useState(false);
+  const swipeX = useRef<number | null>(null);
+  const swiped = useRef(false); // a swipe ends in a click on the backdrop; don't let it close
+  const many = images.length > 1;
+  const step = (d: number) => setIndex((n) => (n + d + images.length) % images.length);
+  const close = () => {
+    setShown(false);
+    window.setTimeout(onClose, 450);
+  };
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setShown(true));
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      cancelAnimationFrame(raf);
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+      else if (many && e.key === 'ArrowRight') step(1);
+      else if (many && e.key === 'ArrowLeft') step(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const ui = 'text-[12px] md:text-[13px] font-bold tracking-[-0.04em] uppercase text-white/70 hover:text-white transition-colors cursor-pointer select-none';
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
+      // Stop clicks reaching the card button that rendered us (React events bubble through portals).
+      onClick={(e) => {
+        e.stopPropagation();
+        if (swiped.current) swiped.current = false;
+        else if (e.target === e.currentTarget) close();
+      }}
+      onPointerDown={(e) => (swipeX.current = e.clientX)}
+      onPointerUp={(e) => {
+        if (swipeX.current === null || !many) return;
+        const dx = e.clientX - swipeX.current;
+        swipeX.current = null;
+        swiped.current = Math.abs(dx) > 50;
+        if (swiped.current) step(dx < 0 ? 1 : -1);
+      }}
+      className="fixed inset-0 z-[200] flex flex-col bg-black/85 backdrop-blur-md cursor-zoom-out"
+      style={{ opacity: shown ? 1 : 0, transition: `opacity .45s ${EASE}` }}
+    >
+      <div className="flex items-center justify-between px-5 sm:px-8 md:px-10 py-4 sm:py-5 cursor-default">
+        <span className="text-[11px] font-mono tracking-tight text-white/50 uppercase">
+          {String(index + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}
+        </span>
+        <button type="button" onClick={close} className={ui} aria-label="Close image viewer">
+          Close
+        </button>
+      </div>
+
+      <div className="relative flex-1 min-h-0 pointer-events-none">
+        {images.map((src, n) => {
+          const on = n === index;
+          return (
+            <img
+              key={src}
+              src={src}
+              alt={on ? alt : ''}
+              draggable={false}
+              className="absolute inset-0 m-auto max-w-[calc(100%-40px)] md:max-w-[calc(100%-160px)] max-h-full w-auto h-auto rounded-[18px] object-contain"
+              style={{
+                opacity: on && shown ? 1 : 0,
+                filter: on && shown ? 'blur(0px)' : 'blur(12px)',
+                transform: on && shown ? 'scale(1)' : 'scale(.96)',
+                transition: `opacity .6s ${EASE}, filter .6s ${EASE}, transform .8s ${EASE}`,
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between px-5 sm:px-8 md:px-10 py-5 sm:py-6 cursor-default">
+        {many ? (
+          <button type="button" onClick={() => step(-1)} className={ui} aria-label="Previous image">
+            ← Prev
+          </button>
+        ) : (
+          <span />
+        )}
+        <span className="text-[11px] font-mono tracking-tight text-white/50 uppercase truncate px-4">{alt}</span>
+        {many ? (
+          <button type="button" onClick={() => step(1)} className={ui} aria-label="Next image">
+            Next →
+          </button>
+        ) : (
+          <span />
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 };
 

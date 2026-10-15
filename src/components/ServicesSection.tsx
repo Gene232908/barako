@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ServiceItem } from '../types/portfolio';
 import { BlurReveal } from './BlurReveal';
-import { openPhoneChat } from '../lib/phoneChat';
+import { CONTACT_HREF, onContactClick } from '../lib/phoneChat';
 
 interface ServicesSectionProps {
   servicesTitle: string;
@@ -145,11 +145,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ servicesTitle,
         {/* Closing CTA */}
         <BlurReveal className="mt-16 md:mt-24">
           <a
-            href="#contact"
-            onClick={(e) => {
-              e.preventDefault();
-              openPhoneChat();
-            }}
+            href={CONTACT_HREF}
+            onClick={onContactClick}
             className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 overflow-hidden border border-black px-5 py-6 md:px-10 md:py-10"
           >
             <span
