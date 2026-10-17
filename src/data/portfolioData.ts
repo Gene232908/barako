@@ -24,7 +24,7 @@ export const portfolioData: PortfolioData = {
       title: 'Sample websites',
       category: 'Web Development',
       // Add more screenshots here; they crossfade one after another.
-      images: ['/images/mockupwebsite.png', '/images/mobilemockup-wide.jpg', '/images/tabletmockup-fit.jpg', '/images/laptopzero60-fit.jpg', '/images/mockuptablezero-fit.jpg'],
+      images: ['/images/mockupwebsite.png', '/images/mobilemockup-wide.jpg', '/images/tabletmockup-fit.jpg', '/images/laptopzero60-fit.jpg', '/images/mockuptablezero-fit.jpg', '/images/studiumockup-fit.jpg', '/images/studiumpc-fit.jpg'],
       link: '#works',
       year: '2026',
       description:
@@ -189,14 +189,11 @@ export const portfolioData: PortfolioData = {
     ],
   },
   socials: [
-    { id: 'soc-1', label: 'LinkedIn', url: 'https://linkedin.com' },
-    { id: 'soc-2', label: 'GitHub', url: 'https://github.com' },
-    { id: 'soc-3', label: 'Facebook', url: 'https://facebook.com' },
-    { id: 'soc-4', label: 'Instagram', url: 'https://instagram.com' },
+    { id: 'soc-1', label: 'LinkedIn', url: 'https://www.linkedin.com/in/gene-mathew-d-wagas-9a1509382' },
   ],
   contacts: {
     email: 'genemathew232@gmail.com',
-    phone: '+63 900 000 0000',
+    phone: '09763331768',
     copyright: '© GENE WAGAS — ALL RIGHTS RESERVED',
   },
 };
