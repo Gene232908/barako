@@ -319,12 +319,37 @@
   will-change: auto;
 }
 
+/* Word-by-word variant: each word blurs/fades in on its own staggered delay (set inline). */
+.split-word {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(8px);
+  transition:
+    opacity 1.6s cubic-bezier(0.25, 0.1, 0.25, 1),
+    filter 1.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.split-reveal[data-shown="true"] .split-word {
+  opacity: 1;
+  filter: blur(0px);
+}
+
+.split-reveal[data-done] .split-word {
+  filter: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .blur-reveal {
     opacity: 1;
     filter: none;
     transition: none;
     will-change: auto;
+  }
+
+  .split-word {
+    opacity: 1;
+    filter: none;
+    transition: none;
   }
 }
 

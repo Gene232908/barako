@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RollingLink } from './RollingLink';
 import { CONTACT_HREF, openPhoneChat } from '../lib/phoneChat';
+import { lockScroll } from '../lib/smoothScroll';
 
 interface NavbarProps {
   logoText: string;
@@ -20,8 +21,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     } else {
       document.body.style.overflow = 'unset';
     }
+    lockScroll(mobileMenuOpen);
     return () => {
       document.body.style.overflow = 'unset';
+      lockScroll(false);
     };
   }, [mobileMenuOpen]);
 

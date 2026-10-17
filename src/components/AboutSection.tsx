@@ -24,7 +24,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
           {/* Left Column Label */}
           <div className="md:col-span-4 lg:col-span-3">
-            <BlurReveal as="p" className="font-section-label text-black tracking-[-0.04em]">
+            <BlurReveal split as="p" className="font-section-label text-black tracking-[-0.04em]">
               {aboutTitle}
             </BlurReveal>
           </div>
@@ -32,14 +32,14 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
           {/* Right Column Body Text */}
           <div className="md:col-span-8 lg:col-span-9 flex flex-col gap-6 max-w-[820px]">
             {paragraphs.map((p, idx) => (
-              <BlurReveal as="p" key={idx} delay={150} className="font-body-bold text-black leading-relaxed">
+              <BlurReveal split as="p" key={idx} delay={150} className="font-body-bold text-black leading-relaxed">
                 {p}
               </BlurReveal>
             ))}
 
             {/* Optional Highlight Box */}
             {highlight && (
-              <BlurReveal className="mt-4 pt-6 border-t border-black/10 flex flex-col gap-3">
+              <BlurReveal split className="mt-4 pt-6 border-t border-black/10 flex flex-col gap-3">
                 <h3 className="font-section-label text-black tracking-[-0.04em]">
                   {highlight.title}
                 </h3>

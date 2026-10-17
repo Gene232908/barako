@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalSto
 import { createPortal } from 'react-dom';
 import type { ProjectItem } from '../types/portfolio';
 import { OPEN_PHONE_CHAT } from '../lib/phoneChat';
+import { isSmoothScrolling, lockScroll, smoothScrollTo } from '../lib/smoothScroll';
 
 interface WorksSectionProps {
   projects: ProjectItem[];
@@ -363,7 +364,8 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       const s = target();
       const dt = last ? Math.min(64, now - last) : 16.7;
       last = now;
-      if (r < 0 || reduced) r = s;
+      // Lenis already eases the page scroll; easing again here would make the fold trail behind.
+      if (r < 0 || reduced || isSmoothScrolling()) r = s;
       else r += (s - r) * (1 - (1 - clamp(MOTION.smoothing, 0.02, 1)) ** (dt / 16.67));
       if (Math.abs(s - r) < 0.1) r = s;
       cur.current = r;
@@ -423,7 +425,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       const p = params.current;
       const top = s.getBoundingClientRect().top + window.scrollY;
       const target = Math.round(top + p.U1 + p.innerPx + p.U2 + p.stageH * MOTION.holdLength * 0.5);
-      window.scrollTo({ top: target, behavior: 'smooth' });
+      smoothScrollTo(target);
       const t0 = performance.now();
       const wait = () => {
         if (Math.abs(window.scrollY - target) < 3 || performance.now() - t0 > 3000) {
@@ -447,7 +449,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     const s = sectionRef.current;
     if (!s || lastK.current < 0.9) return;
     const top = s.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: top + U1 + 2, behavior: 'smooth' });
+    smoothScrollTo(top + U1 + 2);
   };
 
   const abs: React.CSSProperties = { position: 'absolute' };
@@ -942,9 +944,11 @@ const Lightbox: React.FC<{
     const raf = requestAnimationFrame(() => setShown(true));
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    lockScroll(true);
     return () => {
       cancelAnimationFrame(raf);
       document.body.style.overflow = prev;
+      lockScroll(false);
     };
   }, []);
 
@@ -1508,7 +1512,7 @@ const ChatScreen: React.FC<{
       </div>
 
       {/* thread */}
-      <div ref={list} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col gap-[3px] px-4" style={{ paddingTop: portrait ? 8 : 14, paddingBottom: 8, fontSize: 15 * s }}>
+      <div ref={list} data-lenis-prevent className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col gap-[3px] px-4" style={{ paddingTop: portrait ? 8 : 14, paddingBottom: 8, fontSize: 15 * s }}>
         <p className="text-center text-black/45 leading-tight mb-2" style={{ fontSize: 11 * s }}>
           iMessage
           <br />
