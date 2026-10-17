@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import type { ProjectItem } from '../types/portfolio';
 import { OPEN_PHONE_CHAT } from '../lib/phoneChat';
@@ -64,6 +64,27 @@ const useClock = () => {
   return time;
 };
 
+// Whether the intro bulbs are lit. Kept outside React state so flipping it mid-fold re-renders only
+// the bulbs, not the whole device and both copies of its screen.
+type LitStore = { get: () => boolean; set: (v: boolean) => void; subscribe: (fn: () => void) => () => void };
+const createLitStore = (): LitStore => {
+  let on = false;
+  const subs = new Set<() => void>();
+  return {
+    get: () => on,
+    set: (v) => {
+      if (v === on) return;
+      on = v;
+      subs.forEach((fn) => fn());
+    },
+    subscribe: (fn) => {
+      subs.add(fn);
+      return () => subs.delete(fn);
+    },
+  };
+};
+const LitContext = React.createContext<LitStore | null>(null);
+
 export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const contentMeasureRef = useRef<HTMLDivElement>(null);
@@ -95,7 +116,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
   const [nameSize, setNameSize] = useState({ lw: 1, lh: 1, rw: 1, rh: 1 });
   const [finish, setFinish] = useState<FinishKey>('titanium');
   // Lights the intro bulb once the device is (nearly) open; resets when it folds shut so it replays.
-  const [lit, setLit] = useState(false);
+  const [litStore] = useState(createLitStore);
   const litRef = useRef(false);
   const [chatSignal, setChatSignal] = useState(0);
   const time = useClock();
@@ -208,7 +229,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     const wantLit = litRef.current ? c > 0.3 : c > 0.85;
     if (wantLit !== litRef.current) {
       litRef.current = wantLit;
-      setLit(wantLit);
+      litStore.set(wantLit);
     }
     const u = +(1 - c).toFixed(4);
     const d = 180 * u;
@@ -560,7 +581,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       style={{ ...abs, left: landscape && which === 'R' ? -halfW : 0, top: portrait && which === 'R' ? -halfH : 0, width: D, willChange: 'transform' }}
     >
       <div ref={which === 'R' ? contentMeasureRef : undefined} style={{ width: D }}>
-        <ScreenPage projects={projects} portrait={portrait} lit={lit} />
+        <ScreenPage projects={projects} portrait={portrait} />
       </div>
     </div>
   );
@@ -573,6 +594,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     : { ...abs, left: 0, top: G.H / 2, width: G.W, height: G.H / 2, transformOrigin: '50% 0%' };
 
   return (
+    <LitContext.Provider value={litStore}>
     <section
       id="works"
       ref={sectionRef}
@@ -582,12 +604,12 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       <div className="sticky top-0 w-full overflow-hidden" style={{ height: stageH }}>
         {/* Flanking names behind the device */}
         <div style={{ ...fill, pointerEvents: 'none', overflow: 'hidden' }}>
-          <div ref={el.nmL} style={{ ...abs, left: 0, top: 0, willChange: 'transform' }}>
+          <div ref={el.nmL} style={{ ...abs, left: 0, top: 0, willChange: 'transform, opacity' }}>
             <div ref={nameLInner} className="font-hero-title font-black text-[#111] leading-[0.85] tracking-[-0.06em] whitespace-nowrap" style={{ fontSize: 200, width: 'max-content' }}>
               PROJ
             </div>
           </div>
-          <div ref={el.nmR} style={{ ...abs, left: 0, top: 0, willChange: 'transform' }}>
+          <div ref={el.nmR} style={{ ...abs, left: 0, top: 0, willChange: 'transform, opacity' }}>
             <div ref={nameRInner} className="font-hero-title font-black text-[#111] leading-[0.85] tracking-[-0.06em] whitespace-nowrap" style={{ fontSize: 200, width: 'max-content' }}>
               ECTS
             </div>
@@ -604,7 +626,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                 style={{
                   ...abs, left: '50%', top: '100%', marginTop: G.H * 0.045, height: G.H * 0.09, width: G.W * 1.05, borderRadius: '50%',
                   background: 'radial-gradient(closest-side, rgba(0,0,0,.16), rgba(0,0,0,.06) 50%, rgba(0,0,0,0))',
-                  transform: 'translateX(-50%)', pointerEvents: 'none',
+                  transform: 'translateX(-50%)', pointerEvents: 'none', willChange: 'transform',
                 }}
               />
               <div
@@ -612,7 +634,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                 style={{
                   ...abs, left: '50%', top: '100%', marginTop: G.H * 0.012, height: G.H * 0.03, width: G.W * 0.86, borderRadius: '50%',
                   background: 'radial-gradient(closest-side, rgba(0,0,0,.22), rgba(0,0,0,.07) 55%, rgba(0,0,0,0))',
-                  transform: 'translateX(-50%)', pointerEvents: 'none',
+                  transform: 'translateX(-50%)', pointerEvents: 'none', willChange: 'transform',
                 }}
               />
 
@@ -629,7 +651,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                   </>,
                   <>
                     {sideButtons}
-                    <div ref={el.shR} style={{ ...fill, borderRadius: rRight, background: shade('right'), opacity: 0, pointerEvents: 'none', zIndex: 9, transition: radiusTransition }} />
+                    <div ref={el.shR} style={{ ...fill, borderRadius: rRight, background: shade('right'), opacity: 0, pointerEvents: 'none', zIndex: 9, transition: radiusTransition, willChange: 'opacity' }} />
                   </>,
                   [el.rBody, el.rGlass, el.rScreen],
                 )}
@@ -646,7 +668,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                     {crease(landscape ? 'left' : 'top')}
                     {glare('L')}
                   </>,
-                  <div ref={el.shF} style={{ ...fill, borderRadius: rLeaf, background: shade('front'), opacity: 0, pointerEvents: 'none', zIndex: 9 }} />,
+                  <div ref={el.shF} style={{ ...fill, borderRadius: rLeaf, background: shade('front'), opacity: 0, pointerEvents: 'none', zIndex: 9, willChange: 'opacity' }} />,
                 )}
               </div>
 
@@ -658,13 +680,13 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                   <div style={{ ...fill, cursor: 'pointer', isolation: 'isolate' }} onClick={scrollToOpen}>
                     <LockScreen time={time} portrait={portrait} />
                   </div>
-                  <div ref={el.call} style={{ ...fill, opacity: 0, zIndex: 4, isolation: 'isolate' }}>
+                  <div ref={el.call} style={{ ...fill, opacity: 0, zIndex: 4, isolation: 'isolate', willChange: 'opacity' }}>
                     <CallScreen email={email} portrait={portrait} time={time} openSignal={chatSignal} />
                   </div>
                   {glare()}
                 </div>
                 {sideButtons}
-                <div ref={el.shB} style={{ ...fill, borderRadius: rAll, background: shade('back'), opacity: 0, pointerEvents: 'none', zIndex: 9 }} />
+                <div ref={el.shB} style={{ ...fill, borderRadius: rAll, background: shade('back'), opacity: 0, pointerEvents: 'none', zIndex: 9, willChange: 'opacity' }} />
               </div>
 
             </div>
@@ -693,12 +715,18 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
         </div>
       </div>
     </section>
+    </LitContext.Provider>
   );
 };
 
 // Realistic light bulb beside the intro headline. Fades in, then flickers on when `on` flips true
 // (see .idea-bulb in index.css).
-const IdeaBulb: React.FC<{ on: boolean; height: number }> = ({ on, height }) => {
+const noopSubscribe = () => () => {};
+const alwaysOff = () => false;
+
+const IdeaBulb: React.FC<{ height: number }> = ({ height }) => {
+  const store = React.useContext(LitContext);
+  const on = useSyncExternalStore(store?.subscribe ?? noopSubscribe, store?.get ?? alwaysOff);
   const u = React.useId().replace(/:/g, '');
   const globe = 'M41 121C41 106 18 95 18 63a42 42 0 0 1 84 0c0 32-23 43-23 58z';
   const rays: [number, number, number, number][] = [
@@ -1085,7 +1113,7 @@ const SENT_MESSAGES = [
   { from: 'Gene Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
 ];
 
-const LockScreen: React.FC<{ time: string; portrait: boolean; messages?: typeof LOCK_MESSAGES }> = ({
+const LockScreen = React.memo<{ time: string; portrait: boolean; messages?: typeof LOCK_MESSAGES }>(({
   time,
   portrait,
   messages = LOCK_MESSAGES,
@@ -1145,7 +1173,7 @@ const LockScreen: React.FC<{ time: string; portrait: boolean; messages?: typeof 
       <div className="relative z-10 mx-auto rounded-full bg-white/90" style={{ width: portrait ? 110 : 130, height: 5, marginTop: portrait ? 8 : 12 }} />
     </div>
   );
-};
+});
 
 // iOS contact monogram (gray gradient circle with initials).
 const Monogram: React.FC<{ size: number; className?: string }> = ({ size, className = '' }) => (
@@ -1611,7 +1639,7 @@ const ChatScreen: React.FC<{
   );
 };
 
-const CallScreen: React.FC<{ email?: string; portrait: boolean; time: string; openSignal: number }> = ({
+const CallScreen = React.memo<{ email?: string; portrait: boolean; time: string; openSignal: number }>(({
   email,
   portrait,
   time,
@@ -1680,12 +1708,12 @@ const CallScreen: React.FC<{ email?: string; portrait: boolean; time: string; op
       </div>
     </div>
   );
-};
+});
 
 // The page shown across both inner screens: a short intro, then one calm chapter per
 // project. In landscape the hinge sits dead-center, so content is laid out in two
 // columns with a gutter straddling the fold.
-const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: boolean }> = ({ projects, portrait, lit }) => {
+const ScreenPage = React.memo<{ projects: ProjectItem[]; portrait: boolean }>(({ projects, portrait }) => {
   const pad = portrait ? 'px-5' : 'px-10';
   const cols = portrait ? 'grid grid-cols-1 gap-y-6' : 'grid grid-cols-2 gap-x-20';
   const label = 'text-[11px] font-medium uppercase tracking-[0.14em] text-black/45';
@@ -1704,7 +1732,7 @@ const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: bo
               <h2 className="font-black tracking-[-0.06em] leading-[0.9]" style={{ fontSize: 52 }}>
                 I turn ideas into reality.
               </h2>
-              <IdeaBulb on={lit} height={104} />
+              <IdeaBulb height={104} />
             </div>
           </div>
         ) : (
@@ -1717,7 +1745,7 @@ const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: bo
                   <br />
                   ideas
                 </h2>
-                <IdeaBulb on={lit} height={150} />
+                <IdeaBulb height={150} />
               </div>
             </div>
             <div className="flex flex-col justify-end">
@@ -1788,4 +1816,4 @@ const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: bo
       </p>
     </div>
   );
-};
+});
