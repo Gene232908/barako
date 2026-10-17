@@ -300,14 +300,23 @@
 .blur-reveal {
   opacity: 0;
   filter: blur(8px);
+  /* Own GPU layer while hidden/revealing so the blur animates without repainting the page. */
+  will-change: opacity, filter;
   transition:
     opacity 1.6s cubic-bezier(0.25, 0.1, 0.25, 1),
     filter 1.6s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
+/* blur(0px) rather than none keeps both ends the same filter function, so it interpolates cleanly. */
 .blur-reveal[data-shown="true"] {
   opacity: 1;
+  filter: blur(0px);
+}
+
+/* Reveal finished: drop the filter and the layer entirely. */
+.blur-reveal[data-done] {
   filter: none;
+  will-change: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -315,6 +324,7 @@
     opacity: 1;
     filter: none;
     transition: none;
+    will-change: auto;
   }
 }
 

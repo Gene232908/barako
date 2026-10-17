@@ -24,7 +24,7 @@ export const portfolioData: PortfolioData = {
       title: 'Sample websites',
       category: 'Web Development',
       // Add more screenshots here; they crossfade one after another.
-      images: ['/images/mockupwebsite.png', '/images/mobilemockup-wide.jpg', '/images/tabletmockup-fit.jpg', '/images/laptopzero60-fit.jpg', '/images/mockuptablezero-fit.jpg', '/images/studiumockup-fit.jpg', '/images/studiumpc-fit.jpg'],
+      images: ['/images/mockupwebsite.jpg', '/images/mobilemockup-wide.jpg', '/images/tabletmockup-fit.jpg', '/images/laptopzero60-fit.jpg', '/images/mockuptablezero-fit.jpg', '/images/studiumockup-fit.jpg', '/images/studiumpc-fit.jpg'],
       link: '#works',
       year: '2026',
       description:

@@ -175,10 +175,10 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
   }, []);
 
   const params = useRef({
-    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, halfH, nameSize, rRight, rAll,
+    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, nameSize, rRight, rAll,
   });
   params.current = {
-    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, halfH, nameSize, rRight, rAll,
+    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, nameSize, rRight, rAll,
   };
 
   const styleCache = useRef(new WeakMap<HTMLElement, Record<string, string>>());
@@ -313,10 +313,13 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       }
     }
 
+    // Scroll the screen content with a compositor-only transform (no per-frame layout); the
+    // static `top` offset for the second half lives in screenContent's style.
     if (lastInner.current !== inner || changed) {
       lastInner.current = inner;
-      set(el.cL.current, 'top', `${(-inner).toFixed(2)}px`);
-      set(el.cR.current, 'top', `${(port ? -n.halfH - inner : -inner).toFixed(2)}px`);
+      const t = `translate3d(0, ${(-inner).toFixed(2)}px, 0)`;
+      set(el.cL.current, 'transform', t);
+      set(el.cR.current, 'transform', t);
     }
   };
 
@@ -554,7 +557,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     <div
       ref={which === 'L' ? el.cL : el.cR}
       aria-hidden={which === 'L' || undefined}
-      style={{ ...abs, left: landscape && which === 'R' ? -halfW : 0, top: portrait && which === 'R' ? -halfH : 0, width: D }}
+      style={{ ...abs, left: landscape && which === 'R' ? -halfW : 0, top: portrait && which === 'R' ? -halfH : 0, width: D, willChange: 'transform' }}
     >
       <div ref={which === 'R' ? contentMeasureRef : undefined} style={{ width: D }}>
         <ScreenPage projects={projects} portrait={portrait} lit={lit} />
@@ -801,18 +804,49 @@ const IdeaBulb: React.FC<{ on: boolean; height: number }> = ({ on, height }) => 
 // Soft-blur slideshow through a project's screenshots, with small progress dots.
 // Keep the screenshots the same aspect ratio so every slide is framed alike in the card.
 const SLIDE_MS = 2000;
+// The slide is derived from one shared page clock, so the two copies of the screen (one per fold
+// half) always show the same slide even though each pauses on its own while off screen.
+const SLIDE_T0 = performance.now();
+const slideAt = (len: number) => Math.floor((performance.now() - SLIDE_T0) / SLIDE_MS) % len;
+
 const Crossfade: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
-  const [i, setI] = useState(0);
+  const len = images.length;
+  const [{ i, prev }, setSlide] = useState(() => ({ i: len > 1 ? slideAt(len) : 0, prev: -1 }));
   const [zoom, setZoom] = useState(false);
-  // Keeps running while the lightbox is open: the screen is rendered once per fold half, and
-  // both copies must stay on the same slide.
+  const ref = useRef<HTMLButtonElement>(null);
+
+  // Ticks only while the card is on screen and the tab is visible; keeps running while the lightbox is open.
   useEffect(() => {
-    if (images.length < 2) return;
-    const id = window.setInterval(() => setI((n) => (n + 1) % images.length), SLIDE_MS);
-    return () => window.clearInterval(id);
-  }, [images.length]);
+    const node = ref.current;
+    if (len < 2 || !node) return;
+    let timer = 0;
+    let onScreen = false;
+    const sync = () => setSlide((o) => {
+      const n = slideAt(len);
+      return n === o.i ? o : { i: n, prev: o.i };
+    });
+    const schedule = () => {
+      clearTimeout(timer);
+      if (!onScreen || document.hidden) return;
+      sync();
+      timer = window.setTimeout(schedule, SLIDE_MS - ((performance.now() - SLIDE_T0) % SLIDE_MS) + 5);
+    };
+    const io = new IntersectionObserver(([e]) => {
+      onScreen = e.isIntersecting;
+      schedule();
+    });
+    io.observe(node);
+    document.addEventListener('visibilitychange', schedule);
+    return () => {
+      clearTimeout(timer);
+      io.disconnect();
+      document.removeEventListener('visibilitychange', schedule);
+    };
+  }, [len]);
+
   return (
     <button
+      ref={ref}
       type="button"
       onClick={() => setZoom(true)}
       aria-label={`View ${alt} full size`}
@@ -826,6 +860,7 @@ const Crossfade: React.FC<{ images: string[]; alt: string }> = ({ images, alt })
             src={src}
             alt={on ? alt : ''}
             draggable={false}
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover"
             style={{
               // Slightly above center keeps the device mockups framed in the 4:3 card.
@@ -833,6 +868,8 @@ const Crossfade: React.FC<{ images: string[]; alt: string }> = ({ images, alt })
               opacity: on ? 1 : 0,
               filter: on ? 'blur(0px)' : 'blur(10px)',
               transform: on ? 'scale(1)' : 'scale(1.04)',
+              // Only the incoming and outgoing slides are painted; the rest sit fully faded out.
+              visibility: on || n === prev ? 'visible' : 'hidden',
               transition: `opacity .9s ${EASE}, filter .9s ${EASE}, transform 1.6s ${EASE}`,
             }}
           />
