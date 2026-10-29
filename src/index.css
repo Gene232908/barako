@@ -319,23 +319,31 @@
   will-change: auto;
 }
 
-/* Word-by-word variant: each word blurs/fades in on its own staggered delay (set inline). */
-.split-word {
-  display: inline-block;
-  opacity: 0;
+/* Word-by-word variant: words fade in one after another (delays set inline) while the whole
+   block's blur clears over the same span. One blur for the block keeps it to a single GPU pass,
+   where a blur per word meant dozens of passes every frame. */
+.split-reveal {
   filter: blur(8px);
-  transition:
-    opacity 1.6s cubic-bezier(0.25, 0.1, 0.25, 1),
-    filter 1.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: filter var(--reveal-span) cubic-bezier(0.25, 0.1, 0.25, 1) var(--reveal-delay);
+}
+
+.split-reveal[data-shown="true"] {
+  filter: blur(0px);
+  will-change: filter;
+}
+
+.split-reveal[data-done] {
+  filter: none;
+  will-change: auto;
+}
+
+.split-word {
+  opacity: 0;
+  transition: opacity 1.6s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .split-reveal[data-shown="true"] .split-word {
   opacity: 1;
-  filter: blur(0px);
-}
-
-.split-reveal[data-done] .split-word {
-  filter: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -346,6 +354,7 @@
     will-change: auto;
   }
 
+  .split-reveal,
   .split-word {
     opacity: 1;
     filter: none;
@@ -367,6 +376,35 @@
 
 .animate-fade-in-up {
   animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stack core: a thin ring spreading out from it while gathered, hinting that it can be pressed. */
+@keyframes stackHalo {
+  0% { transform: scale(1); opacity: 0.35; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+.stack-halo {
+  animation: stackHalo 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+}
+
+@keyframes stackSpin {
+  to { transform: rotate(360deg); }
+}
+
+.stack-spin {
+  animation: stackSpin 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stack-halo {
+    animation: none;
+    opacity: 0;
+  }
+
+  .stack-spin {
+    animation: none;
+  }
 }
 
 /* iOS lock screen clock: tall, heavy, rounded numerals with a soft frosted-white fill.
@@ -395,12 +433,11 @@
   text-shadow: 0 1px 10px rgba(0, 10, 40, 0.35);
 }
 
-/* iOS 26 "Liquid Glass" surface: clear tint, heavy blur, bright specular rim */
+/* iOS 26 "Liquid Glass" surface: clear tint, bright specular rim. The heavy blur behind it is a
+   pre-blurred wallpaper (Frosted in WorksSection) rather than a per-frame backdrop-filter. */
 .ios-glass {
   position: relative;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.12) 100%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow:
     inset 0 1px 0.5px rgba(255, 255, 255, 0.45),
@@ -472,6 +509,8 @@
   -webkit-background-clip: text;
   background-clip: text;
   animation: slide-shimmer 2.6s linear infinite;
+  /* Own layer: the shimmer repaints every frame, which would otherwise re-raster the whole screen. */
+  will-change: transform;
 }
 @keyframes slide-shimmer {
   from { background-position: 100% 0; }

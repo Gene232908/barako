@@ -24,7 +24,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
           {/* Left Column Label */}
           <div className="md:col-span-4 lg:col-span-3">
-            <BlurReveal split as="p" className="font-section-label text-black tracking-[-0.04em]">
+            <BlurReveal split as="h2" className="font-section-label text-black tracking-[-0.04em]">
               {aboutTitle}
             </BlurReveal>
           </div>

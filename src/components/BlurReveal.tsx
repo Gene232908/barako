@@ -88,7 +88,7 @@ export const BlurReveal: React.FC<BlurRevealProps> = ({ children, as: Tag = 'div
     return observe(node, setStagger);
   }, []);
 
-  // Split reveals end when their last word does; drop the filters and layers then.
+  // Split reveals end when their last word does; drop the filter and its layer then.
   useEffect(() => {
     if (!split || !shown) return;
     const t = window.setTimeout(() => setDone(true), start + step * Math.max(0, words - 1) + REVEAL_MS + 100);
@@ -102,7 +102,7 @@ export const BlurReveal: React.FC<BlurRevealProps> = ({ children, as: Tag = 'div
         className={`split-reveal ${className}`}
         data-shown={shown}
         data-done={done || undefined}
-        style={{ '--reveal-delay': `${start}ms` } as React.CSSProperties}
+        style={{ '--reveal-delay': `${start}ms`, '--reveal-span': `${Math.round(step * Math.max(0, words - 1)) + REVEAL_MS}ms` } as React.CSSProperties}
       >
         {splitWords(children, step, { i: 0 })}
       </Tag>
