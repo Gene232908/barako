@@ -47,18 +47,17 @@ export const Hero: React.FC<HeroProps> = ({
         Fixed at z-0 on desktop so the next section rolls up over it.
         Relative on mobile for smooth scrolling.
       */}
-      <section className="relative md:fixed md:top-0 md:left-0 w-full min-h-[80vh] md:min-h-screen bg-white z-0 flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 pt-24 md:pt-0 overflow-hidden">
-        {/* Title & Subtext Wrapper */}
-        <div className="w-full max-w-[94vw] flex flex-col items-center select-none">
+      <section className="relative md:fixed md:top-0 md:left-0 w-full min-h-[80vh] md:min-h-screen bg-white z-0 flex flex-col justify-center items-center px-3 sm:px-6 md:px-10 pt-24 md:pt-0 overflow-hidden">
+        {/* Title & Subtext Wrapper: w-fit ensures the subtexts span the exact width of GENE WAGAS */}
+        <div className="w-fit max-w-[94vw] flex flex-col items-center select-none">
           {/* 
             Main Title H1:
-            px-2 prevents any glyph clipping.
             overflow-hidden provides the vertical mask so characters emerge from beneath.
           */}
-          <div className="overflow-hidden px-1 sm:px-2 md:px-3">
+          <div className="overflow-hidden px-0.5">
             <h1
               className="font-hero-title text-black text-center whitespace-nowrap leading-[0.9] tracking-[-0.055em]"
-              style={{ fontSize: 'clamp(2.5rem, 11.5vw, 8.25rem)' }}
+              style={{ fontSize: 'clamp(2.85rem, 14.2vw, 8.5rem)' }}
             >
               {words.map((word, wordIdx) => {
                 const wordElement = (
@@ -100,15 +99,15 @@ export const Hero: React.FC<HeroProps> = ({
 
           {/* 
             Subtexts: 
-            Mobile / Small Screens: Rotating role on left + PORTFOLIO 2026 on right with guaranteed gap
+            Mobile / Small Screens: Rotating role pinned to left ('G'), PORTFOLIO 2026 pinned to right ('S')
             Desktop / Wide Screens: All roles centered with wrap safety
           */}
           {/* Mobile view (< md) */}
-          <div className="w-full max-w-[min(92vw,440px)] flex md:hidden justify-between items-center gap-x-4 sm:gap-x-6 mt-2.5 sm:mt-3 px-1 sm:px-2 animate-smooth-subtext">
-            {/* Rotating Role (Left Column) */}
-            <div className="h-[20px] sm:h-[24px] flex items-center overflow-hidden shrink min-w-0">
+          <div className="w-full flex md:hidden justify-between items-center gap-x-3 mt-2 sm:mt-2.5 px-0.5 animate-smooth-subtext">
+            {/* Rotating Role (Left Column: lines up under first letter of GENE) */}
+            <div className="h-[20px] sm:h-[24px] flex items-center overflow-hidden">
               <span
-                className={`font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.04em] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                className={`font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.035em] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                   isTransitioning
                     ? 'opacity-0 -translate-y-2'
                     : 'opacity-100 translate-y-0'
@@ -118,15 +117,15 @@ export const Hero: React.FC<HeroProps> = ({
               </span>
             </div>
 
-            {/* Portfolio Year (Right Column) */}
-            <span className="font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.04em] text-right shrink-0">
+            {/* Portfolio Year (Right Column: lines up under the '6' of 2026 and 'S' of WAGAS) */}
+            <span className="font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.035em] text-right">
               PORTFOLIO 2026
             </span>
           </div>
 
-          {/* Desktop / Medium / Bigger screens (>= md): Centered roles, wraps gracefully on intermediate widths */}
-          <div className="w-full max-w-[94vw] hidden md:flex justify-center items-center mt-3 md:mt-4 px-2 sm:px-4 animate-smooth-subtext">
-            {/* All Roles Centered with wrap safety */}
+          {/* Desktop / Medium / Bigger screens (>= md): Centered roles with wrap safety */}
+          <div className="w-full hidden md:flex justify-center items-center mt-3 md:mt-4 px-2 animate-smooth-subtext">
+            {/* All Roles Centered */}
             <div className="flex flex-wrap items-center justify-center gap-x-2 lg:gap-x-2.5 xl:gap-x-3 gap-y-1">
               {roles.map((role, idx) => (
                 <React.Fragment key={idx}>
