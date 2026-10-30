@@ -123,23 +123,20 @@ export const Hero: React.FC<HeroProps> = ({
             </span>
           </div>
 
-          {/* Desktop / Medium / Bigger screens (>= md): Centered roles with wrap safety */}
-          <div className="w-full hidden md:flex justify-center items-center mt-3 md:mt-4 px-2 animate-smooth-subtext">
-            {/* All Roles Centered */}
-            <div className="flex flex-wrap items-center justify-center gap-x-2 lg:gap-x-2.5 xl:gap-x-3 gap-y-1">
-              {roles.map((role, idx) => (
-                <React.Fragment key={idx}>
-                  <span className="font-body-bold text-black text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[14px] leading-none tracking-[-0.04em] whitespace-nowrap">
-                    {role}
+          {/* Desktop / Medium / Bigger screens (>= md): Edge-to-edge ('dulo dulo') from 'G' of GENE to 'S' of WAGAS */}
+          <div className="w-full hidden md:flex justify-between items-center mt-3 md:mt-4 px-0.5 animate-smooth-subtext">
+            {roles.map((role, idx) => (
+              <React.Fragment key={idx}>
+                <span className="font-body-bold text-black text-[10.5px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[14px] leading-none tracking-[-0.035em] whitespace-nowrap">
+                  {role}
+                </span>
+                {idx < roles.length - 1 && (
+                  <span className="text-black/30 font-normal select-none" aria-hidden="true">
+                    •
                   </span>
-                  {idx < roles.length - 1 && (
-                    <span className="text-black/30 font-normal select-none" aria-hidden="true">
-                      •
-                    </span>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
+                )}
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </section>
