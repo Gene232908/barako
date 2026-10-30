@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "genemat.vercel.app" }],
+      "destination": "https://www.genemat.site/$1",
+      "permanent": true
+    }
+  ]
+}

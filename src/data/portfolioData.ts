@@ -3,7 +3,7 @@ import type { PortfolioData } from '../types/portfolio';
 export const portfolioData: PortfolioData = {
   author: {
     logoText: 'GW™',
-    fullName: 'GENE WAGAS',
+    fullName: 'GENE MATHEW WAGAS',
     roles: [
       'FULL STACK DEVELOPER',
       'IT SPECIALIST',
@@ -23,8 +23,42 @@ export const portfolioData: PortfolioData = {
       id: 'proj-1',
       title: 'Sample websites',
       category: 'Web Development',
-      // Add more screenshots here; they crossfade one after another.
-      images: ['/images/project-1.jpg'],
+      // Each site's mockups crossfade in order; clicking opens them with the site's intro and link.
+      sites: [
+        {
+          name: 'Max Group',
+          kind: 'Company website',
+          intro:
+            'The home of Max Group of Companies, the team behind an advanced aesthetics clinic, a tattoo studio, a skin clinic and a coffee bar. One site introduces every brand and lets clients book an appointment in a few taps.',
+          features: ['One site for every brand', 'Online appointment booking', 'Dark, editorial look that fits the brand'],
+          url: 'https://maxgroup.ph',
+          images: ['/images/mockupwebsite.jpg'],
+        },
+        {
+          name: 'MaxBeaut Attendance',
+          kind: 'Staff attendance system',
+          intro:
+            "An attendance and staff management system for MaxBeaut's branches. Staff clock in from their phone with live camera verification, while managers follow attendance, schedules, leave requests and payroll from one dashboard.",
+          features: ['Camera-verified clock in', 'Schedules and leave across branches', 'Live attendance dashboard and reports'],
+          images: ['/images/mobilemockup-wide.jpg', '/images/tabletmockup-fit.jpg'],
+        },
+        {
+          name: 'Zero Sixty Three',
+          kind: 'Event production website',
+          intro:
+            'A website for Zero Sixty Three Productions, an events company in the United Arab Emirates that handles audio, video and live performance. Bold type and a neon accent give it the energy of a live show.',
+          features: ['Services, portfolio and collaborations', 'High-energy, bold design', 'Looks sharp on every screen'],
+          images: ['/images/laptopzero60-fit.jpg', '/images/mockuptablezero-fit.jpg'],
+        },
+        {
+          name: 'Studium',
+          kind: 'NCLEX learning platform',
+          intro:
+            'An adaptive review platform for Filipino nurses preparing for the NCLEX, the US nursing licensure exam. Students practise with traditional and Next Generation question banks, take exam simulations and track their progress over time.',
+          features: ['Traditional and NGN question banks', 'Adaptive exam mode', 'Progress and topic analytics'],
+          images: ['/images/studiumockup-fit.jpg', '/images/studiumpc-fit.jpg'],
+        },
+      ],
       link: '#works',
       year: '2026',
       description:
@@ -36,17 +70,49 @@ export const portfolioData: PortfolioData = {
       title: 'Behind the posts',
       category: 'Social Media Management',
       visual: 'social',
+      // Real screenshots from pages I manage. The card lays the first three out as a collage:
+      // the first in front, the second as the window behind, the third as the small card.
+      sites: [
+        {
+          name: 'Audience insights',
+          kind: 'Facebook page · Meta Business Suite',
+          intro:
+            'A Facebook page I manage, with 166,772 followers. I keep an eye on who the audience really is (mostly women aged 25 to 44, led by the Philippines and Pakistan) and shape the content, timing and tone around them.',
+          features: ['166,772 lifetime followers', 'Audience by age, gender, city and country', 'Content tuned to the top audiences'],
+          note: 'Client page · details shared on request',
+          stat: '166,772 followers',
+          images: ['/images/social-insights.png'],
+        },
+        {
+          name: 'Content calendar',
+          kind: 'Planner · Meta Business Suite',
+          intro:
+            'A full month of posts planned and scheduled ahead across Facebook and Instagram. Several posts a day, spread over morning, afternoon and evening slots, so the page stays active without last-minute scrambling.',
+          features: ['A month of posts scheduled ahead', 'Facebook and Instagram in one planner', 'A steady daily posting rhythm'],
+          note: 'Client page · details shared on request',
+          images: ['/images/social-calendar.png'],
+        },
+        {
+          name: 'Meta Pixel',
+          kind: 'Tracking · Facebook ads',
+          intro:
+            "Setting up the Meta Pixel on a business's website so visits, sign-ups and purchases are tracked. That data powers conversion tracking, custom audiences and smarter ad spend.",
+          features: ['Track conversions', 'Build custom audiences', 'See which ads drive sales'],
+          note: 'Set up for clients · details shared on request',
+          images: ['/images/social-pixel.jpg'],
+        },
+      ],
       link: '#works',
       year: '2026',
       description:
-        'I help small businesses stay active online. I plan what to post, make the graphics and captions, keep a steady schedule, and reply to comments and messages so customers feel heard.',
-      stack: ['Content planning', 'Graphics & captions', 'Scheduling', 'Community replies'],
+        'I help businesses stay active online. I plan a month of posts ahead in Meta Business Suite, make the graphics and captions, read the audience insights to post what works, and set up the Meta Pixel so ads can be measured.',
+      stack: ['Meta Business Suite', 'Content calendar', 'Audience insights', 'Meta Pixel'],
     },
     {
       id: 'proj-3',
       title: 'AI Workflow Automation',
       category: 'Process Automation',
-      imageUrl: '/images/project-3.jpg',
+      imageUrl: '/images/automation-workflow.jpg',
       link: '#works',
       year: '2026',
       description:
@@ -62,6 +128,14 @@ export const portfolioData: PortfolioData = {
       "I enjoy solving complex problems and turning ideas into practical solutions that deliver real value.",
     ],
     // Highlight removed to keep about section minimal and focused
+  },
+  stack: {
+    title: 'Stack',
+    groups: [
+      { label: 'Frontend', items: ['Next.js', 'React', 'TypeScript', 'JavaScript', 'Tailwind CSS', 'HTML', 'CSS'] },
+      { label: 'Backend & data', items: ['PHP', 'Java', 'Node.js', 'SQL', 'MySQL', 'Supabase', 'Firebase'] },
+      { label: 'Tools', items: ['Git', 'GitHub', 'Figma', 'Google Apps Script', 'Vercel', 'XAMPP'] },
+    ],
   },
   services: {
     title: 'Services',
@@ -189,14 +263,11 @@ export const portfolioData: PortfolioData = {
     ],
   },
   socials: [
-    { id: 'soc-1', label: 'LinkedIn', url: 'https://linkedin.com' },
-    { id: 'soc-2', label: 'GitHub', url: 'https://github.com' },
-    { id: 'soc-3', label: 'Facebook', url: 'https://facebook.com' },
-    { id: 'soc-4', label: 'Instagram', url: 'https://instagram.com' },
+    { id: 'soc-1', label: 'LinkedIn', url: 'https://www.linkedin.com/in/gene-mathew-d-wagas-9a1509382' },
   ],
   contacts: {
     email: 'genemathew232@gmail.com',
-    phone: '+63 900 000 0000',
-    copyright: '© GENE WAGAS — ALL RIGHTS RESERVED',
+    phone: '09763331768',
+    copyright: '© GENE MATHEW WAGAS — ALL RIGHTS RESERVED',
   },
 };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ServiceItem } from '../types/portfolio';
 import { BlurReveal } from './BlurReveal';
-import { openPhoneChat } from '../lib/phoneChat';
+import { CONTACT_HREF, onContactClick } from '../lib/phoneChat';
 
 interface ServicesSectionProps {
   servicesTitle: string;
@@ -22,7 +22,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ servicesTitle,
     >
       <div className="max-w-[1400px] mx-auto">
         {/* Label row — same small bold caps as the hero subtext */}
-        <BlurReveal className="flex items-center justify-between pb-6 md:pb-8">
+        <BlurReveal split className="flex items-center justify-between pb-6 md:pb-8">
           <span className="font-body-bold text-[12px] md:text-[13px]">({servicesTitle})</span>
           <span className="font-body-bold text-[12px] md:text-[13px] text-black/40">
             {count} ways I can help
@@ -31,7 +31,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ servicesTitle,
 
         {/* Headline */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 items-end pb-14 md:pb-20">
-          <BlurReveal delay={120} className="md:col-span-8">
+          <BlurReveal split delay={120} className="md:col-span-8">
             <h2
               className="font-hero-title leading-[0.88] tracking-[-0.06em]"
               style={{ fontSize: 'clamp(2.75rem, 8.4vw, 8rem)' }}
@@ -42,6 +42,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ servicesTitle,
             </h2>
           </BlurReveal>
           <BlurReveal
+            split
             as="p"
             delay={300}
             className="md:col-span-4 text-[15px] md:text-[16px] leading-[1.5] text-black/60 max-w-[34ch] md:justify-self-end"
@@ -145,11 +146,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ servicesTitle,
         {/* Closing CTA */}
         <BlurReveal className="mt-16 md:mt-24">
           <a
-            href="#contact"
-            onClick={(e) => {
-              e.preventDefault();
-              openPhoneChat();
-            }}
+            href={CONTACT_HREF}
+            onClick={onContactClick}
             className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 overflow-hidden border border-black px-5 py-6 md:px-10 md:py-10"
           >
             <span

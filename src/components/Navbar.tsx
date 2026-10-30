@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RollingLink } from './RollingLink';
+import { CONTACT_HREF, openPhoneChat } from '../lib/phoneChat';
+import { lockScroll } from '../lib/smoothScroll';
 
 interface NavbarProps {
   logoText: string;
@@ -19,8 +21,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     } else {
       document.body.style.overflow = 'unset';
     }
+    lockScroll(mobileMenuOpen);
     return () => {
       document.body.style.overflow = 'unset';
+      lockScroll(false);
     };
   }, [mobileMenuOpen]);
 
@@ -31,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         Fixed at top of page with subtle ambient top gradient as shown in screenshot.
       */}
       <header className="fixed top-0 left-0 w-full z-50 bg-white/95 backdrop-blur-xs">
-        {/* Subtle top shading gradient from Framer */}
+        {/* Subtle top shading gradient */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -96,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div
         role="dialog"
         aria-modal="true"
-        className={`framer-slide-drawer text-white flex flex-col justify-between overflow-hidden ${
+        className={`slide-drawer text-white flex flex-col justify-between overflow-hidden ${
           mobileMenuOpen ? 'is-open' : ''
         }`}
       >
@@ -139,7 +143,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <a
               key={link.label}
               href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                if (link.href === CONTACT_HREF) {
+                  e.preventDefault();
+                  // Wait for the drawer to release the body scroll lock before gliding to the phone.
+                  requestAnimationFrame(openPhoneChat);
+                }
+              }}
               className={`font-footer-big text-white/90 hover:text-white transition-all transform hover:-translate-x-3 text-right font-medium tracking-[-0.06em] select-none ${
                 mobileMenuOpen ? 'animate-drawer-link' : 'opacity-0'
               }`}
@@ -154,7 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Bottom Bar: Minimalist Footer info */}
         <div className="relative z-10 w-full px-6 sm:px-12 pb-8 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] font-mono tracking-tight text-white/50 uppercase">
-          <span>GENE WAGAS PORTFOLIO</span>
+          <span>GENE MATHEW WAGAS</span>
           <span>2026</span>
         </div>
       </div>

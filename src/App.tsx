@@ -1,12 +1,17 @@
+import { useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { WorksSection } from './components/WorksSection';
 import { AboutSection } from './components/AboutSection';
+import { StackSection } from './components/StackSection';
 import { ServicesSection } from './components/ServicesSection';
 import { Footer } from './components/Footer';
 import { portfolioData } from './data/portfolioData';
+import { initSmoothScroll } from './lib/smoothScroll';
 
 export function App() {
+  useEffect(initSmoothScroll, []);
+
   return (
     <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white">
       {/* Fixed Header Navbar */}
@@ -34,6 +39,9 @@ export function App() {
           paragraphs={portfolioData.about.paragraphs}
           highlight={portfolioData.about.highlight}
         />
+
+        {/* Tech stack — words burst apart when pressed */}
+        <StackSection title={portfolioData.stack.title} groups={portfolioData.stack.groups} />
 
         {/* Services Section */}
         <ServicesSection

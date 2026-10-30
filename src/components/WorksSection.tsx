@@ -1,6 +1,8 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { ProjectItem } from '../types/portfolio';
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+import type { ProjectItem, SampleSite } from '../types/portfolio';
 import { OPEN_PHONE_CHAT } from '../lib/phoneChat';
+import { isSmoothScrolling, lockScroll, smoothScrollTo } from '../lib/smoothScroll';
 
 interface WorksSectionProps {
   projects: ProjectItem[];
@@ -50,18 +52,45 @@ const insetRadii = (r: string, by: number) =>
     .map((v) => (parseFloat(v) > 0 ? `${Math.max(0, parseFloat(v) - by)}px` : '0px'))
     .join(' ');
 
-const useClock = () => {
-  const fmt = () => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  };
-  const [time, setTime] = useState(fmt);
-  useEffect(() => {
-    const id = window.setInterval(() => setTime(fmt()), 15000);
-    return () => window.clearInterval(id);
-  }, []);
-  return time;
+// Phone clock as one "HH:MM|Weekday, Month D" string, read through useSyncExternalStore so the
+// prerendered HTML can carry a fixed placeholder (iOS's 9:41) and hydrate cleanly before the real
+// time takes over.
+const clockSnapshot = () => {
+  const d = new Date();
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${hm}|${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`;
 };
+const clockServerSnapshot = () => '9:41|';
+const clockSubscribe = (onTick: () => void) => {
+  const id = window.setInterval(onTick, 15000);
+  return () => window.clearInterval(id);
+};
+const useNow = () => {
+  const [time, date] = useSyncExternalStore(clockSubscribe, clockSnapshot, clockServerSnapshot).split('|');
+  return { time, date };
+};
+const useClock = () => useNow().time;
+
+// Whether the intro bulbs are lit. Kept outside React state so flipping it mid-fold re-renders only
+// the bulbs, not the whole device and both copies of its screen.
+type LitStore = { get: () => boolean; set: (v: boolean) => void; subscribe: (fn: () => void) => () => void };
+const createLitStore = (): LitStore => {
+  let on = false;
+  const subs = new Set<() => void>();
+  return {
+    get: () => on,
+    set: (v) => {
+      if (v === on) return;
+      on = v;
+      subs.forEach((fn) => fn());
+    },
+    subscribe: (fn) => {
+      subs.add(fn);
+      return () => subs.delete(fn);
+    },
+  };
+};
+const LitContext = React.createContext<LitStore | null>(null);
 
 export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -94,7 +123,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
   const [nameSize, setNameSize] = useState({ lw: 1, lh: 1, rw: 1, rh: 1 });
   const [finish, setFinish] = useState<FinishKey>('titanium');
   // Lights the intro bulb once the device is (nearly) open; resets when it folds shut so it replays.
-  const [lit, setLit] = useState(false);
+  const [litStore] = useState(createLitStore);
   const litRef = useRef(false);
   const [chatSignal, setChatSignal] = useState(0);
   const time = useClock();
@@ -174,10 +203,10 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
   }, []);
 
   const params = useRef({
-    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, halfH, nameSize, rRight, rAll,
+    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, nameSize, rRight, rAll,
   });
   params.current = {
-    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, halfH, nameSize, rRight, rAll,
+    portrait, G, scale, U1, U2, innerMax, innerPx, stageH, vw: vp.w, cy, nameSize, rRight, rAll,
   };
 
   const styleCache = useRef(new WeakMap<HTMLElement, Record<string, string>>());
@@ -207,7 +236,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     const wantLit = litRef.current ? c > 0.3 : c > 0.85;
     if (wantLit !== litRef.current) {
       litRef.current = wantLit;
-      setLit(wantLit);
+      litStore.set(wantLit);
     }
     const u = +(1 - c).toFixed(4);
     const d = 180 * u;
@@ -230,7 +259,10 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     if (changed) {
       lastK.current = u;
       const leafUp = d < 90;
-      set(el.leaf.current, 'visibility', leafUp ? 'visible' : 'hidden');
+      // Faces swap with opacity, not visibility: a visibility:hidden layer loses its raster and has
+      // to be redrawn from scratch (a visible hitch) every time it comes back mid-fold.
+      set(el.leaf.current, 'opacity', leafUp ? '1' : '0');
+      set(el.leaf.current, 'pointer-events', leafUp ? 'auto' : 'none');
       set(
         el.leaf.current,
         'transform',
@@ -238,7 +270,8 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
           ? 'none'
           : `perspective(${PERSPECTIVE}px) ${port ? `rotateX(${(-d).toFixed(3)}deg)` : `rotateY(${d.toFixed(3)}deg)`}`,
       );
-      set(el.cover.current, 'visibility', leafUp ? 'hidden' : 'visible');
+      set(el.cover.current, 'opacity', leafUp ? '0' : '1');
+      set(el.cover.current, 'pointer-events', leafUp ? 'none' : 'auto');
       set(
         el.cover.current,
         'transform',
@@ -246,17 +279,14 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
           ? 'none'
           : `perspective(${PERSPECTIVE}px) ${port ? `rotateX(${(180 - d).toFixed(3)}deg)` : `rotateY(${(d - 180).toFixed(3)}deg)`}`,
       );
-      set(el.rightH.current, 'visibility', d > 176 ? 'hidden' : 'visible');
+      set(el.rightH.current, 'opacity', d > 176 ? '0' : '1');
+      set(el.rightH.current, 'pointer-events', d > 176 ? 'none' : 'auto');
 
       const rr = leafUp ? n.rRight : n.rAll;
       set(el.rBody.current, 'border-radius', rr);
       set(el.rGlass.current, 'border-radius', insetRadii(rr, g.f));
       set(el.rScreen.current, 'border-radius', insetRadii(rr, g.f + g.bz));
       set(el.shR.current, 'border-radius', rr);
-
-      const contentVis = u > 0.985 ? 'hidden' : 'inherit';
-      set(el.cL.current, 'visibility', contentVis);
-      set(el.cR.current, 'visibility', contentVis);
 
       const m = d / 90;
       set(el.shF.current, 'opacity', String(leafUp ? +(m ** 1.6 * 0.8).toFixed(3) : 0));
@@ -312,10 +342,18 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       }
     }
 
+    // The call screen stays hidden until shortly before the fold closes (otherwise its infinite
+    // "slide to unlock" shimmer keeps repainting unseen), then unhides while still transparent so
+    // it's rasterized in the background rather than in the frame it first fades in.
+    set(el.call.current, 'visibility', e > n.U1 + n.innerPx - n.stageH * 0.6 ? 'visible' : 'hidden');
+
+    // Scroll the screen content with a compositor-only transform (no per-frame layout); the
+    // static `top` offset for the second half lives in screenContent's style.
     if (lastInner.current !== inner || changed) {
       lastInner.current = inner;
-      set(el.cL.current, 'top', `${(-inner).toFixed(2)}px`);
-      set(el.cR.current, 'top', `${(port ? -n.halfH - inner : -inner).toFixed(2)}px`);
+      const t = `translate3d(0, ${(-inner).toFixed(2)}px, 0)`;
+      set(el.cL.current, 'transform', t);
+      set(el.cR.current, 'transform', t);
     }
   };
 
@@ -338,7 +376,8 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       const s = target();
       const dt = last ? Math.min(64, now - last) : 16.7;
       last = now;
-      if (r < 0 || reduced) r = s;
+      // Lenis already eases the page scroll; easing again here would make the fold trail behind.
+      if (r < 0 || reduced || isSmoothScrolling()) r = s;
       else r += (s - r) * (1 - (1 - clamp(MOTION.smoothing, 0.02, 1)) ** (dt / 16.67));
       if (Math.abs(s - r) < 0.1) r = s;
       cur.current = r;
@@ -398,7 +437,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       const p = params.current;
       const top = s.getBoundingClientRect().top + window.scrollY;
       const target = Math.round(top + p.U1 + p.innerPx + p.U2 + p.stageH * MOTION.holdLength * 0.5);
-      window.scrollTo({ top: target, behavior: 'smooth' });
+      smoothScrollTo(target);
       const t0 = performance.now();
       const wait = () => {
         if (Math.abs(window.scrollY - target) < 3 || performance.now() - t0 > 3000) {
@@ -422,7 +461,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     const s = sectionRef.current;
     if (!s || lastK.current < 0.9) return;
     const top = s.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: top + U1 + 2, behavior: 'smooth' });
+    smoothScrollTo(top + U1 + 2);
   };
 
   const abs: React.CSSProperties = { position: 'absolute' };
@@ -553,10 +592,10 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     <div
       ref={which === 'L' ? el.cL : el.cR}
       aria-hidden={which === 'L' || undefined}
-      style={{ ...abs, left: landscape && which === 'R' ? -halfW : 0, top: portrait && which === 'R' ? -halfH : 0, width: D }}
+      style={{ ...abs, left: landscape && which === 'R' ? -halfW : 0, top: portrait && which === 'R' ? -halfH : 0, width: D, willChange: 'transform' }}
     >
       <div ref={which === 'R' ? contentMeasureRef : undefined} style={{ width: D }}>
-        <ScreenPage projects={projects} portrait={portrait} lit={lit} />
+        <ScreenPage projects={projects} portrait={portrait} />
       </div>
     </div>
   );
@@ -569,6 +608,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     : { ...abs, left: 0, top: G.H / 2, width: G.W, height: G.H / 2, transformOrigin: '50% 0%' };
 
   return (
+    <LitContext.Provider value={litStore}>
     <section
       id="works"
       ref={sectionRef}
@@ -578,12 +618,12 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       <div className="sticky top-0 w-full overflow-hidden" style={{ height: stageH }}>
         {/* Flanking names behind the device */}
         <div style={{ ...fill, pointerEvents: 'none', overflow: 'hidden' }}>
-          <div ref={el.nmL} style={{ ...abs, left: 0, top: 0, willChange: 'transform' }}>
+          <div ref={el.nmL} style={{ ...abs, left: 0, top: 0, willChange: 'transform, opacity' }}>
             <div ref={nameLInner} className="font-hero-title font-black text-[#111] leading-[0.85] tracking-[-0.06em] whitespace-nowrap" style={{ fontSize: 200, width: 'max-content' }}>
               PROJ
             </div>
           </div>
-          <div ref={el.nmR} style={{ ...abs, left: 0, top: 0, willChange: 'transform' }}>
+          <div ref={el.nmR} style={{ ...abs, left: 0, top: 0, willChange: 'transform, opacity' }}>
             <div ref={nameRInner} className="font-hero-title font-black text-[#111] leading-[0.85] tracking-[-0.06em] whitespace-nowrap" style={{ fontSize: 200, width: 'max-content' }}>
               ECTS
             </div>
@@ -600,7 +640,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                 style={{
                   ...abs, left: '50%', top: '100%', marginTop: G.H * 0.045, height: G.H * 0.09, width: G.W * 1.05, borderRadius: '50%',
                   background: 'radial-gradient(closest-side, rgba(0,0,0,.16), rgba(0,0,0,.06) 50%, rgba(0,0,0,0))',
-                  transform: 'translateX(-50%)', pointerEvents: 'none',
+                  transform: 'translateX(-50%)', pointerEvents: 'none', willChange: 'transform',
                 }}
               />
               <div
@@ -608,12 +648,12 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                 style={{
                   ...abs, left: '50%', top: '100%', marginTop: G.H * 0.012, height: G.H * 0.03, width: G.W * 0.86, borderRadius: '50%',
                   background: 'radial-gradient(closest-side, rgba(0,0,0,.22), rgba(0,0,0,.07) 55%, rgba(0,0,0,0))',
-                  transform: 'translateX(-50%)', pointerEvents: 'none',
+                  transform: 'translateX(-50%)', pointerEvents: 'none', willChange: 'transform',
                 }}
               />
 
               {/* Static half (right / bottom) */}
-              <div ref={el.rightH} style={rightStyle}>
+              <div ref={el.rightH} style={{ ...rightStyle, willChange: 'opacity' }}>
                 {body(
                   rRight,
                   rightEdge,
@@ -625,14 +665,14 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                   </>,
                   <>
                     {sideButtons}
-                    <div ref={el.shR} style={{ ...fill, borderRadius: rRight, background: shade('right'), opacity: 0, pointerEvents: 'none', zIndex: 9, transition: radiusTransition }} />
+                    <div ref={el.shR} style={{ ...fill, borderRadius: rRight, background: shade('right'), opacity: 0, pointerEvents: 'none', zIndex: 9, transition: radiusTransition, willChange: 'opacity' }} />
                   </>,
                   [el.rBody, el.rGlass, el.rScreen],
                 )}
               </div>
 
               {/* Folding leaf — inner face */}
-              <div ref={el.leaf} style={{ ...leafStyle, willChange: 'transform' }}>
+              <div ref={el.leaf} style={{ ...leafStyle, willChange: 'transform, opacity' }}>
                 {body(
                   rLeaf,
                   leafEdge,
@@ -642,25 +682,25 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
                     {crease(landscape ? 'left' : 'top')}
                     {glare('L')}
                   </>,
-                  <div ref={el.shF} style={{ ...fill, borderRadius: rLeaf, background: shade('front'), opacity: 0, pointerEvents: 'none', zIndex: 9 }} />,
+                  <div ref={el.shF} style={{ ...fill, borderRadius: rLeaf, background: shade('front'), opacity: 0, pointerEvents: 'none', zIndex: 9, willChange: 'opacity' }} />,
                 )}
               </div>
 
               {/* Folding leaf — outer cover face */}
-              <div ref={el.cover} style={{ ...rightStyle, visibility: 'hidden', willChange: 'transform' }}>
+              <div ref={el.cover} style={{ ...rightStyle, opacity: 0, willChange: 'transform, opacity' }}>
                 <div style={{ ...fill, borderRadius: rAll, background: bodyBg, boxShadow: bodyShadow }} />
                 <div style={{ ...abs, inset: G.f, borderRadius: R - G.f, background: '#050505' }} />
                 <div style={{ ...abs, inset: E, borderRadius: R - E, background: SCREEN_BG, overflow: 'hidden', contain: 'paint' }}>
                   <div style={{ ...fill, cursor: 'pointer', isolation: 'isolate' }} onClick={scrollToOpen}>
                     <LockScreen time={time} portrait={portrait} />
                   </div>
-                  <div ref={el.call} style={{ ...fill, opacity: 0, zIndex: 4, isolation: 'isolate' }}>
+                  <div ref={el.call} style={{ ...fill, opacity: 0, visibility: 'hidden', zIndex: 4, isolation: 'isolate', willChange: 'opacity' }}>
                     <CallScreen email={email} portrait={portrait} time={time} openSignal={chatSignal} />
                   </div>
                   {glare()}
                 </div>
                 {sideButtons}
-                <div ref={el.shB} style={{ ...fill, borderRadius: rAll, background: shade('back'), opacity: 0, pointerEvents: 'none', zIndex: 9 }} />
+                <div ref={el.shB} style={{ ...fill, borderRadius: rAll, background: shade('back'), opacity: 0, pointerEvents: 'none', zIndex: 9, willChange: 'opacity' }} />
               </div>
 
             </div>
@@ -689,12 +729,19 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
         </div>
       </div>
     </section>
+    </LitContext.Provider>
   );
 };
 
 // Realistic light bulb beside the intro headline. Fades in, then flickers on when `on` flips true
 // (see .idea-bulb in index.css).
-const IdeaBulb: React.FC<{ on: boolean; height: number }> = ({ on, height }) => {
+const noopSubscribe = () => () => {};
+const alwaysOff = () => false;
+
+const IdeaBulb: React.FC<{ height: number }> = ({ height }) => {
+  const store = React.useContext(LitContext);
+  // The bulb is unlit in the prerendered HTML.
+  const on = useSyncExternalStore(store?.subscribe ?? noopSubscribe, store?.get ?? alwaysOff, alwaysOff);
   const u = React.useId().replace(/:/g, '');
   const globe = 'M41 121C41 106 18 95 18 63a42 42 0 0 1 84 0c0 32-23 43-23 58z';
   const rays: [number, number, number, number][] = [
@@ -797,81 +844,519 @@ const IdeaBulb: React.FC<{ on: boolean; height: number }> = ({ on, height }) => 
   );
 };
 
-// Slow crossfade through a project's screenshots, with small progress dots.
-const Crossfade: React.FC<{ images: string[]; alt: string }> = ({ images, alt }) => {
-  const [i, setI] = useState(0);
+// Soft-blur slideshow through a project's screenshots, with small progress dots.
+// Keep the screenshots the same aspect ratio so every slide is framed alike in the card.
+const SLIDE_MS = 2000;
+// The slide is derived from one shared page clock, so the two copies of the screen (one per fold
+// half) always show the same slide even though each pauses on its own while off screen.
+const SLIDE_T0 = performance.now();
+const slideAt = (len: number) => Math.floor((performance.now() - SLIDE_T0) / SLIDE_MS) % len;
+
+const Crossfade: React.FC<{ images: string[]; alt: string; sites?: SampleSite[] }> = ({ images, alt, sites }) => {
+  const len = images.length;
+  // Starts on the first slide (matching the prerendered HTML) and joins the shared clock on screen.
+  const [{ i, prev }, setSlide] = useState({ i: 0, prev: -1 });
+  const [zoom, setZoom] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+
+  // Ticks only while the card is on screen and the tab is visible; keeps running while the lightbox is open.
   useEffect(() => {
-    if (images.length < 2) return;
-    const id = window.setInterval(() => setI((n) => (n + 1) % images.length), 3800);
-    return () => window.clearInterval(id);
-  }, [images.length]);
+    const node = ref.current;
+    if (len < 2 || !node) return;
+    let timer = 0;
+    let onScreen = false;
+    const sync = () => setSlide((o) => {
+      const n = slideAt(len);
+      return n === o.i ? o : { i: n, prev: o.i };
+    });
+    const schedule = () => {
+      clearTimeout(timer);
+      if (!onScreen || document.hidden) return;
+      sync();
+      timer = window.setTimeout(schedule, SLIDE_MS - ((performance.now() - SLIDE_T0) % SLIDE_MS) + 5);
+    };
+    const io = new IntersectionObserver(([e]) => {
+      onScreen = e.isIntersecting;
+      schedule();
+    });
+    io.observe(node);
+    document.addEventListener('visibilitychange', schedule);
+    return () => {
+      clearTimeout(timer);
+      io.disconnect();
+      document.removeEventListener('visibilitychange', schedule);
+    };
+  }, [len]);
+
   return (
-    <div className="relative w-full h-full">
-      {images.map((src, n) => (
-        <img
-          key={src}
-          src={src}
-          alt={n === i ? alt : ''}
-          draggable={false}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: n === i ? 1 : 0, transition: 'opacity 1.1s ease' }}
-        />
-      ))}
+    <button
+      ref={ref}
+      type="button"
+      onClick={() => setZoom(true)}
+      aria-label={sites ? `View ${alt}: ${sites.map((s) => s.name).join(', ')}` : `View ${alt} full size`}
+      className={`group relative block w-full h-full ${sites ? 'cursor-pointer' : 'cursor-zoom-in'}`}
+    >
+      {images.map((src, n) => {
+        const on = n === i;
+        return (
+          <img
+            key={src}
+            src={src}
+            alt={on ? alt : ''}
+            draggable={false}
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              // Slightly above center keeps the device mockups framed in the 4:3 card.
+              objectPosition: '50% 45%',
+              opacity: on ? 1 : 0,
+              filter: on ? 'blur(0px)' : 'blur(10px)',
+              transform: on ? 'scale(1)' : 'scale(1.04)',
+              // Only the incoming and outgoing slides are painted; the rest sit fully faded out.
+              visibility: on || n === prev ? 'visible' : 'hidden',
+              transition: `opacity .9s ${EASE}, filter .9s ${EASE}, transform 1.6s ${EASE}`,
+            }}
+          />
+        );
+      })}
       {images.length > 1 && (
         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
           {images.map((src, n) => (
             <span
               key={src}
-              className="h-1.5 rounded-full bg-white shadow-[0_0_4px_rgba(0,0,0,.3)]"
-              style={{ width: n === i ? 16 : 6, opacity: n === i ? 1 : 0.6, transition: 'width .4s ease, opacity .4s ease' }}
+              className="h-1.5 rounded-full bg-black"
+              style={{ width: n === i ? 16 : 6, opacity: n === i ? 0.7 : 0.2, transition: `width .5s ${EASE}, opacity .5s ${EASE}` }}
             />
           ))}
         </div>
       )}
-    </div>
+      {sites && (
+        <span className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-3 py-1.5 text-[11px] font-bold uppercase tracking-[-0.02em] text-[#111] shadow-[0_4px_14px_-6px_rgba(0,0,0,.3)] transition-colors duration-300 group-hover:bg-[#111] group-hover:text-white">
+          View {sites.length} sites
+          <Arrow dir={1} className="w-3.5 h-3.5" />
+        </span>
+      )}
+      {zoom &&
+        (sites ? (
+          <SiteViewer title={alt} sites={sites} start={i} onClose={() => setZoom(false)} />
+        ) : (
+          <Lightbox images={images} alt={alt} start={i} onClose={() => setZoom(false)} />
+        ))}
+    </button>
   );
 };
 
-// A week's content plan as a grid of mock posts — stands in for a photo on the social media chapter.
-const SOCIAL_POSTS: { day: string; title: string; kind: string; bg: string; fg: string; play?: boolean }[] = [
-  { day: 'Mon', title: 'New menu drop', kind: 'Post', bg: '#111111', fg: '#ffffff' },
-  { day: 'Tue', title: '3 quick tips', kind: 'Carousel', bg: '#e6e3dd', fg: '#111111' },
-  { day: 'Wed', title: 'Behind the scenes', kind: 'Reel', bg: '#8f8b84', fg: '#ffffff', play: true },
-  { day: 'Thu', title: '“Thank you!”', kind: 'Customer story', bg: '#ffffff', fg: '#111111' },
-  { day: 'Fri', title: 'Meet the team', kind: 'Post', bg: '#2a2a2a', fg: '#ffffff' },
-  { day: 'Sat', title: 'Weekend promo', kind: 'Story', bg: '#d6d2cb', fg: '#111111' },
-];
+const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, '');
 
-const SocialPlan: React.FC = () => (
-  <div className="w-full h-full flex flex-col p-[4.5%] bg-[#f1efeb]">
-    <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.12em] text-black/45">
-      <span>Content plan</span>
-      <span>This week</span>
-    </div>
-    <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-[3%] mt-[4%]">
-      {SOCIAL_POSTS.map((p) => (
-        <div
-          key={p.day}
-          className="relative rounded-[10px] p-[8%] flex flex-col justify-between overflow-hidden"
-          style={{ background: p.bg, color: p.fg, boxShadow: p.bg === '#ffffff' ? 'inset 0 0 0 1px rgba(0,0,0,.08)' : undefined }}
+// Shared behaviour for the full-screen viewers: fade in on mount, lock the page scroll, Esc and
+// arrow keys, and hand focus back to whatever opened the viewer once it closes.
+const useViewer = (onClose: () => void, step: (d: number) => void) => {
+  const [shown, setShown] = useState(false);
+  const close = () => {
+    setShown(false);
+    window.setTimeout(onClose, 450);
+  };
+
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const raf = requestAnimationFrame(() => setShown(true));
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    lockScroll(true);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.body.style.overflow = prev;
+      lockScroll(false);
+      opener?.focus({ preventScroll: true });
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight') step(1);
+      else if (e.key === 'ArrowLeft') step(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  return { shown, close };
+};
+
+// Horizontal swipe on touch screens steps through the images; returns true from `swiped()` right
+// after one so the click that ends the swipe can be ignored.
+const useSwipe = (step: (d: number) => void) => {
+  const x = useRef<number | null>(null);
+  const moved = useRef(false);
+  return {
+    swiped: () => {
+      const m = moved.current;
+      moved.current = false;
+      return m;
+    },
+    handlers: {
+      onPointerDown: (e: React.PointerEvent) => (x.current = e.clientX),
+      onPointerUp: (e: React.PointerEvent) => {
+        if (x.current === null) return;
+        const dx = e.clientX - x.current;
+        x.current = null;
+        moved.current = Math.abs(dx) > 50;
+        if (moved.current) step(dx < 0 ? 1 : -1);
+      },
+    },
+  };
+};
+
+// Full-screen viewer for a project's screenshots. Portaled to <body> so the phone's 3D transforms
+// don't trap it; Esc / backdrop closes, arrow keys or swipes step through.
+const Lightbox: React.FC<{
+  images: string[];
+  alt: string;
+  start: number;
+  onClose: () => void;
+}> = ({ images, alt, start, onClose }) => {
+  const [index, setIndex] = useState(start);
+  const many = images.length > 1;
+  const step = (d: number) => {
+    if (many) setIndex((n) => (n + d + images.length) % images.length);
+  };
+  const { shown, close } = useViewer(onClose, step);
+  const swipe = useSwipe(step);
+
+  const ui = 'text-[12px] md:text-[13px] font-bold tracking-[-0.04em] uppercase text-white/70 hover:text-white transition-colors cursor-pointer select-none';
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
+      // Stop clicks reaching the card button that rendered us (React events bubble through portals).
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!swipe.swiped() && e.target === e.currentTarget) close();
+      }}
+      {...swipe.handlers}
+      className="fixed inset-0 z-[200] flex flex-col bg-black/85 backdrop-blur-md cursor-zoom-out"
+      style={{ opacity: shown ? 1 : 0, transition: `opacity .45s ${EASE}` }}
+    >
+      <div className="flex items-center justify-between px-5 sm:px-8 md:px-10 py-4 sm:py-5 cursor-default">
+        <span className="text-[11px] font-mono tracking-tight text-white/50 uppercase">
+          {String(index + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}
+        </span>
+        <button type="button" onClick={close} className={ui} aria-label="Close image viewer">
+          Close
+        </button>
+      </div>
+
+      <div className="relative flex-1 min-h-0 pointer-events-none">
+        {images.map((src, n) => {
+          const on = n === index;
+          return (
+            <img
+              key={src}
+              src={src}
+              alt={on ? alt : ''}
+              draggable={false}
+              className="absolute inset-0 m-auto max-w-[calc(100%-40px)] md:max-w-[calc(100%-160px)] max-h-full w-auto h-auto rounded-[18px] object-contain"
+              style={{
+                opacity: on && shown ? 1 : 0,
+                filter: on && shown ? 'blur(0px)' : 'blur(12px)',
+                transform: on && shown ? 'scale(1)' : 'scale(.96)',
+                transition: `opacity .6s ${EASE}, filter .6s ${EASE}, transform .8s ${EASE}`,
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between px-5 sm:px-8 md:px-10 py-5 sm:py-6 cursor-default">
+        {many ? (
+          <button type="button" onClick={() => step(-1)} className={ui} aria-label="Previous image">
+            ← Prev
+          </button>
+        ) : (
+          <span />
+        )}
+        <span className="text-[11px] font-mono tracking-tight text-white/50 uppercase truncate px-4">{alt}</span>
+        {many ? (
+          <button type="button" onClick={() => step(1)} className={ui} aria-label="Next image">
+            Next →
+          </button>
+        ) : (
+          <span />
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
+const Arrow: React.FC<{ dir: 1 | -1; className?: string }> = ({ dir, className }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    {dir === 1 ? <path d="M5 12h14M13 6l6 6-6 6" /> : <path d="M19 12H5M11 6l-6 6 6 6" />}
+  </svg>
+);
+
+// Case-study style viewer for the sample websites: a large image stage with thumbnails, the
+// site's intro beside it, and tabs to jump between sites. Arrows step through every screenshot
+// in order, crossing from one site into the next.
+const SiteViewer: React.FC<{ title: string; sites: SampleSite[]; start: number; onClose: () => void }> = ({ title, sites, start, onClose }) => {
+  const shots = sites.flatMap((s, si) => s.images.map((src, k) => ({ src, si, k })));
+  const [index, setIndex] = useState(start);
+  const step = (d: number) => setIndex((n) => (n + d + shots.length) % shots.length);
+  const { shown, close } = useViewer(onClose, step);
+  const swipe = useSwipe(step);
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  const { si, k } = shots[index];
+  const site = sites[si];
+  const firstOf = (n: number) => shots.findIndex((s) => s.si === n);
+
+  useEffect(() => closeBtn.current?.focus({ preventScroll: true }), []);
+
+  const enter = (delay: number): React.CSSProperties => ({
+    opacity: shown ? 1 : 0,
+    transform: shown ? 'none' : 'translateY(18px)',
+    transition: `opacity .7s ${EASE} ${delay}ms, transform .9s ${EASE} ${delay}ms`,
+  });
+  const navBtn =
+    'absolute top-1/2 -translate-y-1/2 grid place-items-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 backdrop-blur text-[#111] shadow-[0_8px_24px_-8px_rgba(0,0,0,.35)] transition-transform duration-300 hover:scale-105 active:scale-95 cursor-pointer';
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      // Stop clicks reaching the card button that rendered us (React events bubble through portals).
+      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-[200] flex flex-col bg-[#FAFAF8] text-[#111]"
+      style={{ opacity: shown ? 1 : 0, transition: `opacity .45s ${EASE}` }}
+    >
+      {/* Header */}
+      <header className="shrink-0 flex items-center justify-between gap-4 px-5 sm:px-8 lg:px-12 h-16 lg:h-20" style={enter(0)}>
+        <p className="flex items-center gap-3 font-body-bold text-[12px] md:text-[13px]">
+          <span>({title})</span>
+          <span className="text-black/35 tabular-nums">
+            {String(si + 1).padStart(2, '0')} / {String(sites.length).padStart(2, '0')}
+          </span>
+        </p>
+        <button
+          ref={closeBtn}
+          type="button"
+          onClick={close}
+          aria-label="Close"
+          className="group flex items-center gap-3 font-body-bold text-[12px] cursor-pointer focus-visible:outline-none"
         >
-          <span className="text-[9px] uppercase tracking-[0.12em] opacity-60">{p.day}</span>
-          {p.play && (
-            <span className="absolute top-[8%] right-[8%] w-6 h-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
-              <svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
-                <path d="M2.5 1.2v7.6L8.6 5z" />
-              </svg>
+          <span className="hidden sm:inline text-black/40 group-hover:text-black transition-colors">Close</span>
+          <span className="grid place-items-center w-11 h-11 rounded-full bg-[#111] text-white transition-transform duration-500 group-hover:rotate-90 group-focus-visible:ring-2 group-focus-visible:ring-black group-focus-visible:ring-offset-2">
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </span>
+        </button>
+      </header>
+
+      {/* Body: scrolls as one column on small screens, two fixed columns on large ones */}
+      <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden overscroll-contain">
+        <div className="lg:h-full grid lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-12 px-5 sm:px-8 lg:px-12 pb-6 lg:pb-8">
+          {/* Image stage */}
+          <div className="lg:h-full min-h-0 flex flex-col gap-3" style={enter(80)}>
+            <div
+              {...swipe.handlers}
+              className="relative aspect-[4/3] lg:aspect-auto lg:flex-1 lg:min-h-0 rounded-[22px] lg:rounded-[32px] overflow-hidden bg-[#ECEAE6] select-none touch-pan-y"
+            >
+              {/* A blurred copy of each shot fills the space the screenshot itself doesn't */}
+              {shots.map((s, n) => (
+                <img
+                  key={`bg-${s.src}`}
+                  src={s.src}
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl"
+                  style={{ opacity: n === index ? 0.55 : 0, transition: `opacity .8s ${EASE}` }}
+                />
+              ))}
+              {shots.map((s, n) => {
+                const on = n === index;
+                return (
+                  <img
+                    key={s.src}
+                    src={s.src}
+                    alt={on ? `${site.name} — ${site.kind}` : ''}
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{
+                      opacity: on ? 1 : 0,
+                      filter: on ? 'blur(0px)' : 'blur(8px)',
+                      transform: on ? 'scale(1)' : 'scale(1.03)',
+                      transition: `opacity .7s ${EASE}, filter .7s ${EASE}, transform 1.1s ${EASE}`,
+                    }}
+                  />
+                );
+              })}
+              <button type="button" onClick={() => step(-1)} aria-label="Previous screenshot" className={`${navBtn} left-3 md:left-5`}>
+                <Arrow dir={-1} className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+              <button type="button" onClick={() => step(1)} aria-label="Next screenshot" className={`${navBtn} right-3 md:right-5`}>
+                <Arrow dir={1} className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
+
+            {/* This site's screenshots */}
+            {site.images.length > 1 && (
+              <div className="shrink-0 flex items-center gap-2">
+                {site.images.map((src, n) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setIndex(firstOf(si) + n)}
+                    aria-label={`Screenshot ${n + 1} of ${site.name}`}
+                    aria-current={n === k}
+                    className={`relative w-16 h-12 md:w-[76px] md:h-14 rounded-[12px] overflow-hidden cursor-pointer transition-all duration-300 ${n === k ? 'ring-2 ring-[#111] ring-offset-2 ring-offset-[#FAFAF8]' : 'opacity-50 hover:opacity-100'}`}
+                  >
+                    <img src={src} alt="" draggable={false} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+                <span className="ml-2 font-body-bold text-[11px] text-black/35 tabular-nums">
+                  {k + 1} / {site.images.length}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Site intro */}
+          <aside data-lenis-prevent className="lg:h-full lg:overflow-y-auto overscroll-contain flex flex-col" style={enter(160)}>
+            {/* Keyed by site so the copy fades in afresh when moving to another site. */}
+            <div key={site.name} className="animate-fade-in-up flex flex-col lg:pt-2">
+              <p className="font-body-bold text-[12px] text-black/40">{site.kind}</p>
+              <h2 className="font-black tracking-[-0.06em] leading-[0.9] mt-3 text-[40px] sm:text-[48px] xl:text-[60px]">{site.name}</h2>
+              <p className="text-[15px] md:text-[16px] leading-[1.65] text-black/60 mt-5">{site.intro}</p>
+
+              <ul className="order-1 mt-7 border-t border-black/10">
+                {site.features.map((f, n) => (
+                  <li key={f} className="flex items-center gap-4 py-3.5 border-b border-black/10 text-[14px] font-medium text-black/80">
+                    <span className="font-mono text-[11px] text-black/30 tabular-nums">{String(n + 1).padStart(2, '0')}</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              {site.url ? (
+                <a
+                  href={site.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group lg:order-2 mt-7 lg:mt-8 flex items-center justify-between gap-4 rounded-full bg-[#111] text-white pl-6 pr-2 py-2 transition-colors hover:bg-black"
+                >
+                  <span className="flex flex-col min-w-0 py-1">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/50">Visit website</span>
+                    <span className="text-[15px] font-bold tracking-[-0.02em] truncate">{hostOf(site.url)}</span>
+                  </span>
+                  <span aria-hidden className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-white text-[#111] transition-transform duration-500 group-hover:-rotate-45">
+                    <Arrow dir={1} className="w-[18px] h-[18px]" />
+                  </span>
+                </a>
+              ) : (
+                <p className="lg:order-2 mt-7 lg:mt-8 flex items-center gap-3 rounded-full border border-black/10 px-6 py-4 text-[13px] font-medium text-black/50">
+                  <span className="w-2 h-2 rounded-full bg-black/25" />
+                  {site.note ?? 'Private build · demo available on request'}
+                </p>
+              )}
+            </div>
+
+            <p className="hidden lg:block mt-auto pt-8 font-body-bold text-[11px] text-black/30">← → to browse · Esc to close</p>
+          </aside>
+        </div>
+      </div>
+
+      {/* Site tabs */}
+      <nav
+        aria-label={title}
+        data-lenis-prevent
+        className="shrink-0 border-t border-black/10 px-5 sm:px-8 lg:px-12 py-3 lg:py-4 overflow-x-auto overscroll-contain"
+        style={enter(240)}
+      >
+        <div className="flex gap-2 lg:grid lg:grid-cols-4 lg:gap-3">
+          {sites.map((s, n) => {
+            const on = n === si;
+            return (
+              <button
+                key={s.name}
+                type="button"
+                onClick={() => setIndex(firstOf(n))}
+                aria-current={on}
+                className={`flex items-center gap-3 shrink-0 rounded-[16px] p-2 pr-4 text-left cursor-pointer transition-all duration-300 ${on ? 'bg-white shadow-[0_6px_20px_-10px_rgba(0,0,0,.3)] ring-1 ring-black/10' : 'opacity-60 hover:opacity-100 hover:bg-black/[0.03]'}`}
+              >
+                <img src={s.images[0]} alt="" draggable={false} className="w-14 h-10 lg:w-16 lg:h-12 rounded-[10px] object-cover shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-bold tracking-[-0.02em] truncate">{s.name}</span>
+                  <span className="block text-[11px] text-black/45 truncate">{s.kind}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>,
+    document.body,
+  );
+};
+
+// "Behind the posts" card: real Meta Business Suite screenshots laid out like windows on a desk.
+// The second item sits behind as a browser window, the first floats in front on the right and the
+// third is a small card on the left. Opens the same viewer as the sample websites.
+const SocialShowcase: React.FC<{ items: SampleSite[]; title: string }> = ({ items, title }) => {
+  const [open, setOpen] = useState(false);
+  const [front, back, small] = items.map((it) => it.images[0]);
+  const card = 'absolute overflow-hidden rounded-[10px] bg-white ring-1 ring-black/[0.06] transition-transform duration-700';
+
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      aria-label={`View ${title}: ${items.map((it) => it.name).join(', ')}`}
+      className="group relative block w-full h-full overflow-hidden cursor-pointer bg-[#EDEFF3]"
+      style={{ transitionTimingFunction: EASE }}
+    >
+      {/* Soft light behind the windows */}
+      <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 70% 30%, #fff 0%, transparent 60%)' }} />
+
+      {back && (
+        <div className={`${card} left-[5%] top-[17%] w-[78%] h-[54%] shadow-[0_16px_36px_-18px_rgba(0,0,0,.4)] group-hover:-translate-y-1`}>
+          <div className="flex items-center gap-[3px] h-[13%] px-[2.5%] bg-[#F6F7F9] border-b border-black/[0.06]">
+            {['#FF5F57', '#FEBC2E', '#28C840'].map((c) => (
+              <span key={c} className="w-[5px] h-[5px] rounded-full" style={{ background: c }} />
+            ))}
+            <span className="ml-[3%] text-[7px] font-semibold text-black/40 truncate">Meta Business Suite · Planner</span>
+          </div>
+          <img src={back} alt="" draggable={false} decoding="async" className="w-full h-[87%] object-cover object-left-top" />
+        </div>
+      )}
+      {small && (
+        <div className={`${card} left-[9%] bottom-[6%] w-[36%] h-[27%] shadow-[0_18px_36px_-16px_rgba(0,0,0,.45)] group-hover:-translate-y-1.5`}>
+          <img src={small} alt="" draggable={false} decoding="async" className="w-full h-full object-contain" />
+        </div>
+      )}
+      {front && (
+        <div className={`${card} right-[5%] top-[31%] w-[41%] h-[62%] shadow-[0_24px_48px_-18px_rgba(0,0,0,.5)] group-hover:-translate-y-2`}>
+          <img src={front} alt="" draggable={false} decoding="async" className="w-full h-full object-cover object-left-top" />
+          {items[0].stat && (
+            <span className="absolute left-[6%] bottom-[5%] rounded-full bg-[#111] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[-0.01em] text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,.5)]">
+              {items[0].stat}
             </span>
           )}
-          <div className="relative">
-            <p className="text-[12px] font-semibold leading-tight tracking-[-0.01em]">{p.title}</p>
-            <p className="text-[9px] mt-0.5 opacity-60">{p.kind}</p>
-          </div>
         </div>
-      ))}
-    </div>
-  </div>
-);
+      )}
+
+      <span className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-3 py-1.5 text-[11px] font-bold uppercase tracking-[-0.02em] text-[#111] shadow-[0_4px_14px_-6px_rgba(0,0,0,.3)] transition-colors duration-300 group-hover:bg-[#111] group-hover:text-white">
+        See the real work
+        <Arrow dir={1} className="w-3.5 h-3.5" />
+      </span>
+      {open && <SiteViewer title={title} sites={items} start={0} onClose={() => setOpen(false)} />}
+    </button>
+  );
+};
 
 // iOS Messages app icon.
 const MessagesIcon: React.FC<{ size: number }> = ({ size }) => {
@@ -905,26 +1390,86 @@ const LOCK_MESSAGES = [
 ];
 
 const WALLPAPER = '/images/puss.jpg';
+// The wallpaper with the glass blur/saturation pre-applied (blur(24px) at each layout's lock-screen size).
+const WALLPAPER_FROST = { landscape: '/images/puss-frost.jpg', portrait: '/images/puss-frost-portrait.jpg' };
+const LOCK_SHADE = 'linear-gradient(180deg, rgba(5,10,25,.35) 0%, rgba(5,10,25,0) 30%, rgba(5,10,25,0) 62%, rgba(5,10,25,.4) 100%)';
+
+// Stand-in for `backdrop-filter: blur(24px) saturate(180%)` over the lock-screen wallpaper: the
+// pre-blurred wallpaper, lined up with where this glass sits. A live backdrop filter is recomputed
+// on every frame the phone folds or floats; this is just an image.
+const Frosted: React.FC<{ portrait: boolean; radius: string; children: React.ReactNode }> = ({
+  portrait,
+  radius,
+  children,
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    // Looked up rather than passed as a ref: an ancestor's ref isn't attached yet when this runs.
+    const r = node?.closest<HTMLElement>('[data-lock-screen]');
+    if (!node || !r) return;
+    // Layout offsets (unaffected by the device's 3D transforms) from the lock screen's padding box.
+    const measure = () => {
+      let x = 0;
+      let y = 0;
+      for (let n: HTMLElement | null = node; n && n !== r; n = n.offsetParent as HTMLElement | null) {
+        x += n.offsetLeft;
+        y += n.offsetTop;
+      }
+      const w = r.clientWidth;
+      const h = r.clientHeight;
+      setBox((b) => (b && b.x === x && b.y === y && b.w === w && b.h === h ? b : { x, y, w, h }));
+    };
+    measure();
+    document.fonts?.ready.then(measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(r);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [portrait]);
+
+  return (
+    <div ref={ref} className="relative">
+      <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none bg-[#0d1830]" style={{ borderRadius: radius }}>
+        {box && (
+          <div className="absolute" style={{ left: -box.x, top: -box.y, width: box.w, height: box.h }}>
+            <img
+              src={portrait ? WALLPAPER_FROST.portrait : WALLPAPER_FROST.landscape}
+              alt=""
+              draggable={false}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectPosition: `50% ${portrait ? 35 : 45}%` }}
+            />
+            <div className="absolute inset-0" style={{ background: LOCK_SHADE }} />
+          </div>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+};
 
 // Shown on the lock screen once a visitor has finished the iMessage chat.
 const SENT_MESSAGES = [
-  { from: 'Gene Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
+  { from: 'Gene Mathew Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
 ];
 
-const LockScreen: React.FC<{ time: string; portrait: boolean; messages?: typeof LOCK_MESSAGES }> = ({
+const LockScreen = React.memo<{ time: string; portrait: boolean; messages?: typeof LOCK_MESSAGES }>(({
   time,
   portrait,
   messages = LOCK_MESSAGES,
 }) => {
   const notes = messages.slice(0, portrait ? 1 : 2);
-  const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const { date } = useNow();
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ padding: portrait ? '16px 14px 10px' : '34px 22px 14px' }}>
+    <div data-lock-screen className="absolute inset-0 flex flex-col overflow-hidden" style={{ padding: portrait ? '16px 14px 10px' : '34px 22px 14px' }}>
       {/* Wallpaper, framed so the cat sits between the clock and the notifications */}
       <div className="absolute inset-0 pointer-events-none bg-[#0d1830]">
         <img src={WALLPAPER} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: `50% ${portrait ? 35 : 45}%` }} />
         {/* Soft top and bottom shading keeps the clock and the glass legible, like iOS does */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(5,10,25,.35) 0%, rgba(5,10,25,0) 30%, rgba(5,10,25,0) 62%, rgba(5,10,25,.4) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: LOCK_SHADE }} />
       </div>
       <div className="relative z-10 flex flex-col items-center text-center text-white">
         <span className="ios-lock-date" style={{ fontSize: portrait ? 13 : 17 }}>
@@ -940,38 +1485,44 @@ const LockScreen: React.FC<{ time: string; portrait: boolean; messages?: typeof 
       <div className="flex-1" />
       <div className="relative z-10 flex flex-col gap-2">
         {notes.map((m) => (
-          <div key={m.from} className="ios-glass rounded-[24px] px-3 py-2.5 flex items-center gap-3 text-white">
-            <MessagesIcon size={38} />
-            <div className="flex flex-col text-left min-w-0 flex-1">
-              <div className="flex items-baseline gap-2">
-                <span className="text-[13px] font-semibold leading-tight truncate flex-1">{m.from}</span>
-                <span className="text-[11px] text-white/60 shrink-0">{m.when}</span>
+          <Frosted key={m.from} portrait={portrait} radius="24px">
+            <div className="ios-glass rounded-[24px] px-3 py-2.5 flex items-center gap-3 text-white">
+              <MessagesIcon size={38} />
+              <div className="flex flex-col text-left min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[13px] font-semibold leading-tight truncate flex-1">{m.from}</span>
+                  <span className="text-[11px] text-white/60 shrink-0">{m.when}</span>
+                </div>
+                <span className="text-[12px] text-white/85 leading-snug mt-0.5 line-clamp-2">{m.text}</span>
               </div>
-              <span className="text-[12px] text-white/85 leading-snug mt-0.5 line-clamp-2">{m.text}</span>
             </div>
-          </div>
+          </Frosted>
         ))}
       </div>
       {/* Flashlight / swipe hint / camera, then the home indicator */}
       <div className="relative z-10 flex items-center justify-between text-white" style={{ marginTop: portrait ? 10 : 16 }}>
-        <span className="ios-glass w-11 h-11 rounded-full flex items-center justify-center">
-          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" viewBox="0 0 24 24">
-            <path d="M8 2.5h8v3.2l-2 3V20a2 2 0 0 1-4 0V8.7l-2-3z" />
-            <path d="M12 12.5v2" strokeLinecap="round" />
-          </svg>
-        </span>
+        <Frosted portrait={portrait} radius="9999px">
+          <span className="ios-glass w-11 h-11 rounded-full flex items-center justify-center">
+            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M8 2.5h8v3.2l-2 3V20a2 2 0 0 1-4 0V8.7l-2-3z" />
+              <path d="M12 12.5v2" strokeLinecap="round" />
+            </svg>
+          </span>
+        </Frosted>
         <span className="text-[12px] font-medium tracking-tight text-white/80">Scroll to unfold</span>
-        <span className="ios-glass w-11 h-11 rounded-full flex items-center justify-center">
-          <svg className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" viewBox="0 0 24 24">
-            <path d="M4 7.5h3l1.8-2.5h6.4L17 7.5h3a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5z" />
-            <circle cx="12" cy="13" r="3.6" />
-          </svg>
-        </span>
+        <Frosted portrait={portrait} radius="9999px">
+          <span className="ios-glass w-11 h-11 rounded-full flex items-center justify-center">
+            <svg className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M4 7.5h3l1.8-2.5h6.4L17 7.5h3a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5z" />
+              <circle cx="12" cy="13" r="3.6" />
+            </svg>
+          </span>
+        </Frosted>
       </div>
       <div className="relative z-10 mx-auto rounded-full bg-white/90" style={{ width: portrait ? 110 : 130, height: 5, marginTop: portrait ? 8 : 12 }} />
     </div>
   );
-};
+});
 
 // iOS contact monogram (gray gradient circle with initials).
 const Monogram: React.FC<{ size: number; className?: string }> = ({ size, className = '' }) => (
@@ -1298,7 +1849,7 @@ const ChatScreen: React.FC<{
           className="-mt-1.5 relative px-3 py-1 rounded-full bg-white shadow-[0_2px_14px_rgba(0,0,0,.1)] border border-black/5 font-semibold tracking-[-0.01em] flex items-center gap-1"
           style={{ fontSize: 14 * s }}
         >
-          Gene Wagas
+          Gene Mathew Wagas
           <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeOpacity=".35" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
             <path d="m1 1 4 4-4 4" />
           </svg>
@@ -1306,7 +1857,7 @@ const ChatScreen: React.FC<{
       </div>
 
       {/* thread */}
-      <div ref={list} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col gap-[3px] px-4" style={{ paddingTop: portrait ? 8 : 14, paddingBottom: 8, fontSize: 15 * s }}>
+      <div ref={list} data-lenis-prevent className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col gap-[3px] px-4" style={{ paddingTop: portrait ? 8 : 14, paddingBottom: 8, fontSize: 15 * s }}>
         <p className="text-center text-black/45 leading-tight mb-2" style={{ fontSize: 11 * s }}>
           iMessage
           <br />
@@ -1437,7 +1988,7 @@ const ChatScreen: React.FC<{
   );
 };
 
-const CallScreen: React.FC<{ email?: string; portrait: boolean; time: string; openSignal: number }> = ({
+const CallScreen = React.memo<{ email?: string; portrait: boolean; time: string; openSignal: number }>(({
   email,
   portrait,
   time,
@@ -1470,7 +2021,7 @@ const CallScreen: React.FC<{ email?: string; portrait: boolean; time: string; op
             Incoming call · about your next project
           </span>
           <h3 className="text-white font-semibold tracking-[-0.03em] mt-1.5 leading-none" style={{ fontSize: portrait ? 32 : 46 }}>
-            Gene Wagas
+            Gene Mathew Wagas
           </h3>
         </div>
         {!portrait && <Monogram size={112} className="relative z-10 mt-9 text-[44px] ring-4 ring-white/15" />}
@@ -1506,12 +2057,12 @@ const CallScreen: React.FC<{ email?: string; portrait: boolean; time: string; op
       </div>
     </div>
   );
-};
+});
 
 // The page shown across both inner screens: a short intro, then one calm chapter per
 // project. In landscape the hinge sits dead-center, so content is laid out in two
 // columns with a gutter straddling the fold.
-const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: boolean }> = ({ projects, portrait, lit }) => {
+const ScreenPage = React.memo<{ projects: ProjectItem[]; portrait: boolean }>(({ projects, portrait }) => {
   const pad = portrait ? 'px-5' : 'px-10';
   const cols = portrait ? 'grid grid-cols-1 gap-y-6' : 'grid grid-cols-2 gap-x-20';
   const label = 'text-[11px] font-medium uppercase tracking-[0.14em] text-black/45';
@@ -1530,7 +2081,7 @@ const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: bo
               <h2 className="font-black tracking-[-0.06em] leading-[0.9]" style={{ fontSize: 52 }}>
                 I turn ideas into reality.
               </h2>
-              <IdeaBulb on={lit} height={104} />
+              <IdeaBulb height={104} />
             </div>
           </div>
         ) : (
@@ -1543,7 +2094,7 @@ const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: bo
                   <br />
                   ideas
                 </h2>
-                <IdeaBulb on={lit} height={150} />
+                <IdeaBulb height={150} />
               </div>
             </div>
             <div className="flex flex-col justify-end">
@@ -1597,8 +2148,10 @@ const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: bo
             )}
           </div>
           <div className="overflow-hidden rounded-[18px] bg-black/5 aspect-[4/3]">
-            {p.visual === 'social' ? (
-              <SocialPlan />
+            {p.visual === 'social' && p.sites ? (
+              <SocialShowcase items={p.sites} title={p.title} />
+            ) : p.sites && p.sites.length > 0 ? (
+              <Crossfade images={p.sites.flatMap((s) => s.images)} alt={p.title} sites={p.sites} />
             ) : p.images && p.images.length > 0 ? (
               <Crossfade images={p.images} alt={p.title} />
             ) : (
@@ -1614,4 +2167,4 @@ const ScreenPage: React.FC<{ projects: ProjectItem[]; portrait: boolean; lit: bo
       </p>
     </div>
   );
-};
+});

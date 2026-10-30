@@ -1,4 +1,5 @@
 import React from 'react';
+import { CONTACT_HREF, onContactClick } from '../lib/phoneChat';
 
 interface RollingLinkProps {
   href: string;
@@ -20,6 +21,7 @@ export const RollingLink: React.FC<RollingLinkProps> = ({
       href={href}
       target={target}
       rel={rel}
+      onClick={href === CONTACT_HREF ? onContactClick : undefined}
       className={`magnetic-pill group ${className}`}
     >
       <div className="magnetic-pill-bg" />
