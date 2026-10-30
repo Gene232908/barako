@@ -36,7 +36,7 @@
   }
 }
 
-/* Framer exact typography presets */
+/* Typography presets */
 .font-hero-title {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
@@ -216,7 +216,7 @@
   animation: shimmerPulse 1.8s ease-in-out infinite;
 }
 
-/* Exact Framer Character-by-Character Hero Letter Animation (Ultra-Smooth & Slower) */
+/* Character-by-character hero letter animation */
 @keyframes heroCharSlideUp {
   0% {
     transform: translateY(120%);
@@ -254,8 +254,8 @@
   will-change: transform, opacity;
 }
 
-/* Framer Slower, Silky Smooth Slide-Down & Slide-Up Drawer with Opacity Fade */
-.framer-slide-drawer {
+/* Slide-down and slide-up mobile drawer with an opacity fade */
+.slide-drawer {
   position: fixed;
   top: 0;
   left: 0;
@@ -273,7 +273,7 @@
   will-change: transform, opacity;
 }
 
-.framer-slide-drawer.is-open {
+.slide-drawer.is-open {
   transform: translateY(0%);
   opacity: 1;
   pointer-events: auto;

@@ -83,7 +83,7 @@ export const Footer: React.FC<FooterProps> = ({
           </p>
 
           <div className="text-[11px] font-mono tracking-tight text-black/40 uppercase">
-            GENE WAGAS PORTFOLIO
+            GENE MATHEW WAGAS
           </div>
         </BlurReveal>
       </div>

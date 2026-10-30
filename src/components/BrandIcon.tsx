@@ -7,6 +7,7 @@ import {
   siGoogleappsscript,
   siHtml5,
   siJavascript,
+  siMysql,
   siNextdotjs,
   siNodedotjs,
   siPhp,
@@ -15,6 +16,7 @@ import {
   siTailwindcss,
   siTypescript,
   siVercel,
+  siXampp,
 } from 'simple-icons';
 
 type SimpleIcon = { path: string; hex: string };
@@ -29,11 +31,13 @@ const SIMPLE: Record<string, SimpleIcon> = {
   CSS: siCss,
   PHP: siPhp,
   'Node.js': siNodedotjs,
+  MySQL: siMysql,
   Supabase: siSupabase,
   Git: siGit,
   GitHub: siGithub,
   'Google Apps Script': siGoogleappsscript,
   Vercel: siVercel,
+  XAMPP: siXampp,
 };
 
 // Logos Simple Icons lacks or only has in one color, drawn by hand in their official colors.

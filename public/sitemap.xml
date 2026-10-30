@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://genemat.vercel.app/</loc>
-    <lastmod>2026-10-29</lastmod>
+    <loc>https://www.genemat.site/</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://genemat.vercel.app/og-image.png</image:loc>
+      <image:loc>https://www.genemat.site/og-image.png</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://genemat.vercel.app/images/mockupwebsite.jpg</image:loc>
+      <image:loc>https://www.genemat.site/images/mockupwebsite.jpg</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://genemat.vercel.app/images/studiumpc-fit.jpg</image:loc>
+      <image:loc>https://www.genemat.site/images/studiumpc-fit.jpg</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://genemat.vercel.app/images/laptopzero60-fit.jpg</image:loc>
+      <image:loc>https://www.genemat.site/images/laptopzero60-fit.jpg</image:loc>
     </image:image>
   </url>
 </urlset>

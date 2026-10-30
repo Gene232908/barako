@@ -44,7 +44,7 @@ export const Hero: React.FC<HeroProps> = ({
 
       {/* 
         Hero Section:
-        Fixed at z-0 on desktop for the signature Framer parallax roll-over reveal.
+        Fixed at z-0 on desktop so the next section rolls up over it.
         Relative on mobile for smooth scrolling.
       */}
       <section className="relative md:fixed md:top-0 md:left-0 w-full min-h-[80vh] md:min-h-screen bg-white z-0 flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 pt-24 md:pt-0 overflow-hidden">
@@ -56,7 +56,11 @@ export const Hero: React.FC<HeroProps> = ({
             overflow-hidden provides the vertical mask so characters emerge from beneath.
           */}
           <div className="overflow-hidden px-1 sm:px-2 md:px-3">
-            <h1 className="font-hero-title text-black text-center whitespace-nowrap leading-[0.9] tracking-[-0.055em]">
+            <h1
+              className="font-hero-title text-black text-center whitespace-nowrap leading-[0.9] tracking-[-0.055em]"
+              // Scales with the viewport so the full name stays on one line, phone to desktop.
+              style={{ fontSize: 'clamp(1.75rem, 8.2vw, 8.25rem)' }}
+            >
               {words.map((word, wordIdx) => {
                 const wordElement = (
                   <span

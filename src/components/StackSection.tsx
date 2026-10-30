@@ -23,7 +23,7 @@ const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Where the logos land, as rings around the core. Wide fields get three elliptical rings, one per
-// group with the smallest group innermost; phone-width fields get two circles. Neighbouring rings
+// group with the smallest group innermost; phone-width fields get two taller ovals. Neighbouring rings
 // sit a fixed step apart, wide enough that logos on them clear each other whatever angle each
 // ring is turned to (a step of ~1.42 tiles), and the inner ring clears the core's corners. Item
 // order is the flattened groups.
@@ -36,9 +36,11 @@ const measure = (W: number, H: number, tile: number, icon: number, groups: strin
   let rings: Ring[];
   let members: number[][];
   if (W < 560) {
-    const r = Math.min(W, H) / 2 - tile / 2 - 12;
-    const inner = Math.max(r - step, (icon / 2 + tile / 2 + 6) * Math.SQRT2);
-    rings = [{ rx: inner, ry: inner }, { rx: r, ry: r }];
+    // Phones are taller than they are wide, so the rings stretch upward to give the logos room.
+    const rx = W / 2 - tile / 2 - 12;
+    const ry = Math.min(H / 2 - tile / 2 - 12, rx * 1.35);
+    const clear = (icon / 2 + tile / 2 + 6) * Math.SQRT2;
+    rings = [{ rx: Math.max(rx - step, clear), ry: Math.max(ry - step, clear) }, { rx, ry }];
     const flat = ids.flat();
     const split = Math.round(flat.length * 0.44);
     members = [flat.slice(0, split), flat.slice(split)];
@@ -215,22 +217,18 @@ const sparks = (layer: HTMLElement) => {
 // slowly around it.
 const Core: React.FC = () => (
   <>
-    <svg aria-hidden viewBox="0 0 100 100" className="stack-spin pointer-events-none absolute inset-[5px] sm:inset-[7px]">
-      <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      <circle
-        cx="50"
-        cy="50"
-        r="48"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="1.6"
-        strokeDasharray="44 258"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-    <span className="relative font-black tracking-[-0.07em] leading-none text-[22px] sm:text-[28px] lg:text-[34px]">
-      GW<span className="align-super text-[0.38em] font-bold tracking-normal">™</span>
+    {/* The spinning box is a span stretched by inset, so the arc turns around the core's exact
+        center in every browser; an absolutely placed <svg> alone isn't stretched by Safari. */}
+    <span aria-hidden className="stack-spin pointer-events-none absolute inset-[5px] sm:inset-[7px]">
+      <svg viewBox="0 0 100 100" className="block w-full h-full" fill="none">
+        <circle cx="50" cy="50" r="48" stroke="rgba(255,255,255,.18)" strokeWidth="1.6" />
+        <circle cx="50" cy="50" r="48" stroke="#fff" strokeWidth="2.4" strokeDasharray="44 258" strokeLinecap="round" />
+      </svg>
+    </span>
+    {/* The trademark hangs outside the text box so "GW" itself sits dead center. */}
+    <span className="relative font-black tracking-[-0.07em] leading-none text-[20px] min-[380px]:text-[22px] sm:text-[28px] lg:text-[34px]">
+      GW
+      <span className="absolute left-full top-0 ml-[0.04em] text-[0.34em] font-bold tracking-normal">™</span>
     </span>
   </>
 );
@@ -314,14 +312,11 @@ export const StackSection: React.FC<StackSectionProps> = ({ title, groups }) => 
           onClick={(e) => e.target === e.currentTarget && setActive(null)}
           className="relative h-[440px] sm:h-[680px] lg:h-[720px]"
         >
-          {/* Corner hints, shown once the stack is spread out */}
+          {/* Corner hints, shown once the stack is spread out; phones need that space for the logos */}
           <div
-            className={`pointer-events-none absolute inset-x-5 top-5 md:inset-x-7 md:top-6 flex items-start justify-between gap-4 text-black/40 transition-opacity duration-500 ${open ? 'opacity-100' : 'opacity-0'}`}
+            className={`pointer-events-none absolute inset-x-5 top-5 md:inset-x-7 md:top-6 hidden sm:flex items-start justify-between gap-4 text-black/40 transition-opacity duration-500 ${open ? 'opacity-100' : 'opacity-0'}`}
           >
-            <span className={label}>
-              <span className="hidden sm:inline">Hover a logo for its name</span>
-              <span className="sm:hidden">Tap a logo</span>
-            </span>
+            <span className={label}>Hover a logo for its name</span>
             <span className={label}>Tap the center to gather</span>
           </div>
 
@@ -338,11 +333,11 @@ export const StackSection: React.FC<StackSectionProps> = ({ title, groups }) => 
                   className={`absolute left-1/2 top-1/2 will-change-transform ${open ? 'cursor-default' : 'pointer-events-none'}`}
                 >
                   <span
-                    className={`grid place-items-center w-10 h-10 sm:w-[52px] sm:h-[52px] lg:w-16 lg:h-16 transition-transform duration-300 ${on ? 'scale-115' : ''}`}
+                    className={`grid place-items-center w-9 h-9 min-[380px]:w-10 min-[380px]:h-10 sm:w-[52px] sm:h-[52px] lg:w-16 lg:h-16 transition-transform duration-300 ${on ? 'scale-115' : ''}`}
                   >
                     <BrandIcon
                       name={item}
-                      className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 drop-shadow-[0_8px_14px_rgba(0,0,0,.14)]"
+                      className="w-7 h-7 min-[380px]:w-8 min-[380px]:h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 drop-shadow-[0_8px_14px_rgba(0,0,0,.14)]"
                     />
                   </span>
                   <span
@@ -366,7 +361,7 @@ export const StackSection: React.FC<StackSectionProps> = ({ title, groups }) => 
               onClick={() => setScattered(!open)}
               aria-expanded={open}
               aria-label={open ? 'Gather my tech stack' : 'Explode my tech stack'}
-              className="relative grid place-items-center w-[72px] h-[72px] sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full bg-[#111] text-white cursor-pointer shadow-[0_24px_48px_-16px_rgba(0,0,0,.55)] transition-transform duration-500 hover:scale-[1.04] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
+              className="relative grid place-items-center w-16 h-16 min-[380px]:w-[72px] min-[380px]:h-[72px] sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full bg-[#111] text-white cursor-pointer shadow-[0_24px_48px_-16px_rgba(0,0,0,.55)] transition-transform duration-500 hover:scale-[1.04] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
             >
               <Core />
             </button>

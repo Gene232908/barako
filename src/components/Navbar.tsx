@@ -35,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         Fixed at top of page with subtle ambient top gradient as shown in screenshot.
       */}
       <header className="fixed top-0 left-0 w-full z-50 bg-white/95 backdrop-blur-xs">
-        {/* Subtle top shading gradient from Framer */}
+        {/* Subtle top shading gradient */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -100,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div
         role="dialog"
         aria-modal="true"
-        className={`framer-slide-drawer text-white flex flex-col justify-between overflow-hidden ${
+        className={`slide-drawer text-white flex flex-col justify-between overflow-hidden ${
           mobileMenuOpen ? 'is-open' : ''
         }`}
       >
@@ -165,7 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Bottom Bar: Minimalist Footer info */}
         <div className="relative z-10 w-full px-6 sm:px-12 pb-8 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] font-mono tracking-tight text-white/50 uppercase">
-          <span>GENE WAGAS PORTFOLIO</span>
+          <span>GENE MATHEW WAGAS</span>
           <span>2026</span>
         </div>
       </div>

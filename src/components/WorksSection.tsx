@@ -1453,7 +1453,7 @@ const Frosted: React.FC<{ portrait: boolean; radius: string; children: React.Rea
 
 // Shown on the lock screen once a visitor has finished the iMessage chat.
 const SENT_MESSAGES = [
-  { from: 'Gene Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
+  { from: 'Gene Mathew Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
 ];
 
 const LockScreen = React.memo<{ time: string; portrait: boolean; messages?: typeof LOCK_MESSAGES }>(({
@@ -1849,7 +1849,7 @@ const ChatScreen: React.FC<{
           className="-mt-1.5 relative px-3 py-1 rounded-full bg-white shadow-[0_2px_14px_rgba(0,0,0,.1)] border border-black/5 font-semibold tracking-[-0.01em] flex items-center gap-1"
           style={{ fontSize: 14 * s }}
         >
-          Gene Wagas
+          Gene Mathew Wagas
           <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeOpacity=".35" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
             <path d="m1 1 4 4-4 4" />
           </svg>
@@ -2021,7 +2021,7 @@ const CallScreen = React.memo<{ email?: string; portrait: boolean; time: string;
             Incoming call · about your next project
           </span>
           <h3 className="text-white font-semibold tracking-[-0.03em] mt-1.5 leading-none" style={{ fontSize: portrait ? 32 : 46 }}>
-            Gene Wagas
+            Gene Mathew Wagas
           </h3>
         </div>
         {!portrait && <Monogram size={112} className="relative z-10 mt-9 text-[44px] ring-4 ring-white/15" />}

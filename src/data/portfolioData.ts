@@ -3,7 +3,7 @@ import type { PortfolioData } from '../types/portfolio';
 export const portfolioData: PortfolioData = {
   author: {
     logoText: 'GW™',
-    fullName: 'GENE WAGAS',
+    fullName: 'GENE MATHEW WAGAS',
     roles: [
       'FULL STACK DEVELOPER',
       'IT SPECIALIST',
@@ -112,7 +112,7 @@ export const portfolioData: PortfolioData = {
       id: 'proj-3',
       title: 'AI Workflow Automation',
       category: 'Process Automation',
-      imageUrl: '/images/project-3.jpg',
+      imageUrl: '/images/automation-workflow.jpg',
       link: '#works',
       year: '2026',
       description:
@@ -133,8 +133,8 @@ export const portfolioData: PortfolioData = {
     title: 'Stack',
     groups: [
       { label: 'Frontend', items: ['Next.js', 'React', 'TypeScript', 'JavaScript', 'Tailwind CSS', 'HTML', 'CSS'] },
-      { label: 'Backend & data', items: ['PHP', 'Java', 'Node.js', 'SQL', 'Supabase', 'Firebase'] },
-      { label: 'Tools', items: ['Git', 'GitHub', 'Figma', 'Google Apps Script', 'Vercel'] },
+      { label: 'Backend & data', items: ['PHP', 'Java', 'Node.js', 'SQL', 'MySQL', 'Supabase', 'Firebase'] },
+      { label: 'Tools', items: ['Git', 'GitHub', 'Figma', 'Google Apps Script', 'Vercel', 'XAMPP'] },
     ],
   },
   services: {
@@ -268,6 +268,6 @@ export const portfolioData: PortfolioData = {
   contacts: {
     email: 'genemathew232@gmail.com',
     phone: '09763331768',
-    copyright: '© GENE WAGAS — ALL RIGHTS RESERVED',
+    copyright: '© GENE MATHEW WAGAS — ALL RIGHTS RESERVED',
   },
 };
