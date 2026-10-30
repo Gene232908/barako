@@ -297,7 +297,6 @@ export const StackSection: React.FC<StackSectionProps> = ({ title, groups }) => 
     };
   }, [groups, orbit, setScattered]);
 
-  const label = 'font-body-bold text-[11px] md:text-[12px]';
 
   return (
     <section id="stack" className="relative z-10 bg-white w-full px-5 md:px-10 pb-24 md:pb-36">
@@ -312,13 +311,6 @@ export const StackSection: React.FC<StackSectionProps> = ({ title, groups }) => 
           onClick={(e) => e.target === e.currentTarget && setActive(null)}
           className="relative h-[440px] sm:h-[680px] lg:h-[720px]"
         >
-          {/* Corner hints, shown once the stack is spread out; phones need that space for the logos */}
-          <div
-            className={`pointer-events-none absolute inset-x-5 top-5 md:inset-x-7 md:top-6 hidden sm:flex items-start justify-between gap-4 text-black/40 transition-opacity duration-500 ${open ? 'opacity-100' : 'opacity-0'}`}
-          >
-            <span className={label}>Hover a logo for its name</span>
-            <span className={label}>Tap the center to gather</span>
-          </div>
 
           <ul aria-label="Tech stack">
             {items.map((item, i) => {

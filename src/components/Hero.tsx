@@ -48,18 +48,17 @@ export const Hero: React.FC<HeroProps> = ({
         Relative on mobile for smooth scrolling.
       */}
       <section className="relative md:fixed md:top-0 md:left-0 w-full min-h-[80vh] md:min-h-screen bg-white z-0 flex flex-col justify-center items-center px-4 sm:px-6 md:px-10 pt-24 md:pt-0 overflow-hidden">
-        {/* Title Wrapper: w-fit ensures the subtexts stretch exactly to the width of the name */}
-        <div className="w-fit max-w-[94vw] flex flex-col items-center select-none overflow-hidden">
+        {/* Title & Subtext Wrapper */}
+        <div className="w-full max-w-[94vw] flex flex-col items-center select-none">
           {/* 
             Main Title H1:
-            px-2 prevents any glyph clipping (like 'S' curve overhang).
+            px-2 prevents any glyph clipping.
             overflow-hidden provides the vertical mask so characters emerge from beneath.
           */}
           <div className="overflow-hidden px-1 sm:px-2 md:px-3">
             <h1
               className="font-hero-title text-black text-center whitespace-nowrap leading-[0.9] tracking-[-0.055em]"
-              // Scales with the viewport so the full name stays on one line, phone to desktop.
-              style={{ fontSize: 'clamp(1.75rem, 8.2vw, 8.25rem)' }}
+              style={{ fontSize: 'clamp(2.5rem, 11.5vw, 8.25rem)' }}
             >
               {words.map((word, wordIdx) => {
                 const wordElement = (
@@ -101,13 +100,13 @@ export const Hero: React.FC<HeroProps> = ({
 
           {/* 
             Subtexts: 
-            Mobile / Small Screens: Rotating role on left + PORTFOLIO 2026 on right
-            Desktop / Wide Screens: All roles in 1 row ("isang bagsakan") + PORTFOLIO 2026 on right
+            Mobile / Small Screens: Rotating role on left + PORTFOLIO 2026 on right with guaranteed gap
+            Desktop / Wide Screens: All roles centered with wrap safety
           */}
           {/* Mobile view (< md) */}
-          <div className="w-full flex md:hidden justify-between items-center mt-2 sm:mt-2.5 px-1 sm:px-2 animate-smooth-subtext">
+          <div className="w-full max-w-[min(92vw,440px)] flex md:hidden justify-between items-center gap-x-4 sm:gap-x-6 mt-2.5 sm:mt-3 px-1 sm:px-2 animate-smooth-subtext">
             {/* Rotating Role (Left Column) */}
-            <div className="h-[20px] sm:h-[24px] flex items-center overflow-hidden">
+            <div className="h-[20px] sm:h-[24px] flex items-center overflow-hidden shrink min-w-0">
               <span
                 className={`font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.04em] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                   isTransitioning
@@ -120,18 +119,18 @@ export const Hero: React.FC<HeroProps> = ({
             </div>
 
             {/* Portfolio Year (Right Column) */}
-            <span className="font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.04em] text-right">
+            <span className="font-body-bold text-black text-[10px] min-[360px]:text-[11px] sm:text-[13px] leading-none whitespace-nowrap tracking-[-0.04em] text-right shrink-0">
               PORTFOLIO 2026
             </span>
           </div>
 
-          {/* Desktop / Medium / Bigger screens (>= md): Centered roles, PORTFOLIO 2026 hidden */}
-          <div className="w-full hidden md:flex justify-center items-center mt-2.5 md:mt-3 px-1 sm:px-2 md:px-3 animate-smooth-subtext">
-            {/* All Roles Centered in 1 Single Row */}
-            <div className="flex items-center justify-center gap-1.5 lg:gap-2 xl:gap-2.5 whitespace-nowrap">
+          {/* Desktop / Medium / Bigger screens (>= md): Centered roles, wraps gracefully on intermediate widths */}
+          <div className="w-full max-w-[94vw] hidden md:flex justify-center items-center mt-3 md:mt-4 px-2 sm:px-4 animate-smooth-subtext">
+            {/* All Roles Centered with wrap safety */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2 lg:gap-x-2.5 xl:gap-x-3 gap-y-1">
               {roles.map((role, idx) => (
                 <React.Fragment key={idx}>
-                  <span className="font-body-bold text-black text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[14px] leading-none tracking-[-0.04em]">
+                  <span className="font-body-bold text-black text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[14px] leading-none tracking-[-0.04em] whitespace-nowrap">
                     {role}
                   </span>
                   {idx < roles.length - 1 && (

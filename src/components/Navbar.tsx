@@ -165,7 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Bottom Bar: Minimalist Footer info */}
         <div className="relative z-10 w-full px-6 sm:px-12 pb-8 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] font-mono tracking-tight text-white/50 uppercase">
-          <span>GENE MATHEW WAGAS</span>
+          <span>GENE WAGAS</span>
           <span>2026</span>
         </div>
       </div>

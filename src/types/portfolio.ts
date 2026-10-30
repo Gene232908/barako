@@ -7,6 +7,8 @@ export interface SampleSite {
   features: string[];
   /** Live address; leave out for private or unreleased builds. */
   url?: string;
+  /** Custom label displayed on the visit button (defaults to the site hostname). */
+  urlLabel?: string;
   /** Shown instead of a link when there's no url (defaults to a "private build" note). */
   note?: string;
   /** A headline number to badge on the project card, e.g. "166,772 followers". */

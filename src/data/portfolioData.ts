@@ -3,7 +3,7 @@ import type { PortfolioData } from '../types/portfolio';
 export const portfolioData: PortfolioData = {
   author: {
     logoText: 'GW™',
-    fullName: 'GENE MATHEW WAGAS',
+    fullName: 'GENE WAGAS',
     roles: [
       'FULL STACK DEVELOPER',
       'IT SPECIALIST',
@@ -31,7 +31,8 @@ export const portfolioData: PortfolioData = {
           intro:
             'The home of Max Group of Companies, the team behind an advanced aesthetics clinic, a tattoo studio, a skin clinic and a coffee bar. One site introduces every brand and lets clients book an appointment in a few taps.',
           features: ['One site for every brand', 'Online appointment booking', 'Dark, editorial look that fits the brand'],
-          url: 'https://maxgroup.ph',
+          url: 'https://maxg-kappa.vercel.app',
+          urlLabel: 'maxbeaut',
           images: ['/images/mockupwebsite.jpg'],
         },
         {
@@ -93,31 +94,65 @@ export const portfolioData: PortfolioData = {
           images: ['/images/social-calendar.png'],
         },
         {
-          name: 'Meta Pixel',
-          kind: 'Tracking · Facebook ads',
+          name: 'Creatives & Video Vault',
+          kind: 'Google Drive · Post Creatives & Video Production',
           intro:
-            "Setting up the Meta Pixel on a business's website so visits, sign-ups and purchases are tracked. That data powers conversion tracking, custom audiences and smarter ad spend.",
-          features: ['Track conversions', 'Build custom audiences', 'See which ads drive sales'],
-          note: 'Set up for clients · details shared on request',
+            'A complete, organized production drive for client marketing campaigns. Every folder contains production-ready marketing creatives, promotional posters, treatment reels, AI video edits, and announcement banners organized by branch and service.',
+          features: [
+            'All folders contain campaign posters, ad graphics, and video reels',
+            'Organized by treatment: Botox, Hydrafacial, Fillers, Laser, and more',
+            'Over 60+ categorized asset folders ready for multi-channel scheduling',
+          ],
+          note: 'Production drive · 60+ organized creative folders',
+          stat: '60+ folders',
+          images: ['/images/social-creatives-drive.png'],
+        },
+        {
+          name: 'Meta Pixel Setup',
+          kind: 'Pixel Installation · Website Tracking',
+          intro:
+            "Properly installing and configuring the Meta Pixel on a business's website so page visits, button clicks, and sign-ups are accurately captured. This gives their marketing team the tracking foundation they need to run targeted ads, expand their reach, and measure campaign results.",
+          features: [
+            'Clean base pixel installation and website integration',
+            'Event tracking for page visits, button clicks, and inquiries',
+            'Powers marketing campaigns and ad expansion without guessing',
+          ],
+          note: 'Technical setup · verified on client websites',
           images: ['/images/social-pixel.jpg'],
         },
       ],
       link: '#works',
       year: '2026',
       description:
-        'I help businesses stay active online. I plan a month of posts ahead in Meta Business Suite, make the graphics and captions, read the audience insights to post what works, and set up the Meta Pixel so ads can be measured.',
-      stack: ['Meta Business Suite', 'Content calendar', 'Audience insights', 'Meta Pixel'],
+        'I help businesses stay active online. From producing posters and promotional video reels across 60+ organized creative folders, to planning a full month of posts in Meta Business Suite, reading audience insights, and installing the Meta Pixel so marketing campaigns can track and expand their ads.',
+      stack: ['Meta Business Suite', 'Content calendar', 'Posters & video reels', 'Audience insights', 'Meta Pixel Setup'],
     },
     {
       id: 'proj-3',
-      title: 'AI Workflow Automation',
-      category: 'Process Automation',
-      imageUrl: '/images/automation-workflow.jpg',
+      title: 'Spreadsheets to Web Systems',
+      category: 'Workflow Automation',
       link: '#works',
       year: '2026',
       description:
-        'Tired of doing the same tasks by hand, or losing hours tallying totals across spreadsheets? I build simple workflow automations that take over the repetitive parts, so you and your team can focus on the work that matters.',
-      stack: ['Task automation', 'Auto-computed totals', 'Reports & reminders', 'Connected tools'],
+        "Don't worry about your existing messy Excel or Google Sheets data—I can transform and connect it into clean, organized web systems. From inventory and profit trackers with AI assistants to automated financial ledgers, everything is organized, auto-computed, and easy to read without spreadsheet stress.",
+      stack: ['Spreadsheet Database', 'AI Store Assistant', 'Auto-Computed Profit', 'Stock Alerts'],
+      sites: [
+        {
+          name: 'Tindahan Tracker',
+          kind: 'Store & Inventory Web App · Spreadsheet Database',
+          intro:
+            "A smart store inventory and profit tracking web app powered by a live spreadsheet database. Don't worry about your existing messy Excel or Google Sheets files—I organize and connect your data into a clean, simple interface so it's effortless to read and never overwhelming. Store owners can track daily profit, sales, and inventory alerts in real time.",
+          features: [
+            'AI Store Assistant: Type or speak naturally (e.g. "Coke Mismo buy 15 sell 20 stock 24") to auto-insert inventory',
+            'Live spreadsheet database: Seamlessly connects to your existing Excel/Sheets data',
+            'Auto-computed profit: Real-time computation of Today\'s Profit, Monthly Sales, and Margins',
+            'Smart inventory alerts: Instant warnings for Low Stock, Sold Out, and Loss-Making products',
+          ],
+          url: 'https://onlinetindahan.vercel.app/',
+          urlLabel: 'onlinetindahan',
+          images: ['/images/tindahan-spreadsheet-mockup.jpg', '/images/tindahan-tracker.png'],
+        },
+      ],
     },
   ],
   about: {
@@ -151,7 +186,7 @@ export const portfolioData: PortfolioData = {
         deliverables: [
           'Custom Web Apps',
           'Frontend & Backend',
-          'REST & GraphQL APIs',
+          'API Integration',
           'Database Architecture',
         ],
       },
@@ -173,16 +208,16 @@ export const portfolioData: PortfolioData = {
       {
         id: 'srv-3',
         number: '03',
-        title: 'AI Automation & Integration',
-        tagline: 'Let the repetitive work run itself.',
-        category: 'AI & Automation',
+        title: 'Workflow & System Automation',
+        tagline: 'Turn messy spreadsheets into organized web systems.',
+        category: 'Automation & Systems',
         description:
-          'Workflow automation, API integrations, AI-powered features, and connecting business tools.',
+          'Transform manual spreadsheets, Jotforms, and repetitive tasks into unified web dashboards and automated data flows.',
         deliverables: [
-          'Workflow Automation',
-          'API & Webhook Pipelines',
-          'AI-Powered Integrations',
-          'Business Tool Sync',
+          'Spreadsheet to Web Systems',
+          'Form & Submission Pipelines',
+          'Auto-Computed Dashboards',
+          'Centralized Business Data',
         ],
       },
       {
@@ -227,7 +262,6 @@ export const portfolioData: PortfolioData = {
           'Technical SEO',
           'Search Visibility',
           'Performance Optimization',
-          'Traffic & Growth Strategies',
         ],
       },
       {
@@ -268,6 +302,6 @@ export const portfolioData: PortfolioData = {
   contacts: {
     email: 'genemathew232@gmail.com',
     phone: '09763331768',
-    copyright: '© GENE MATHEW WAGAS — ALL RIGHTS RESERVED',
+    copyright: '© GENE WAGAS — ALL RIGHTS RESERVED',
   },
 };

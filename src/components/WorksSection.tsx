@@ -932,7 +932,7 @@ const Crossfade: React.FC<{ images: string[]; alt: string; sites?: SampleSite[] 
       )}
       {sites && (
         <span className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur px-3 py-1.5 text-[11px] font-bold uppercase tracking-[-0.02em] text-[#111] shadow-[0_4px_14px_-6px_rgba(0,0,0,.3)] transition-colors duration-300 group-hover:bg-[#111] group-hover:text-white">
-          View {sites.length} sites
+          {sites.length > 1 ? `View ${sites.length} ${alt.toLowerCase().includes('system') ? 'systems' : 'sites'}` : 'View details'}
           <Arrow dir={1} className="w-3.5 h-3.5" />
         </span>
       )}
@@ -1251,7 +1251,7 @@ const SiteViewer: React.FC<{ title: string; sites: SampleSite[]; start: number; 
                 >
                   <span className="flex flex-col min-w-0 py-1">
                     <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/50">Visit website</span>
-                    <span className="text-[15px] font-bold tracking-[-0.02em] truncate">{hostOf(site.url)}</span>
+                    <span className="text-[15px] font-bold tracking-[-0.02em] truncate">{site.urlLabel ?? hostOf(site.url)}</span>
                   </span>
                   <span aria-hidden className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-white text-[#111] transition-transform duration-500 group-hover:-rotate-45">
                     <Arrow dir={1} className="w-[18px] h-[18px]" />
@@ -1453,7 +1453,7 @@ const Frosted: React.FC<{ portrait: boolean; radius: string; children: React.Rea
 
 // Shown on the lock screen once a visitor has finished the iMessage chat.
 const SENT_MESSAGES = [
-  { from: 'Gene Mathew Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
+  { from: 'Gene Wagas', text: "Thanks for reaching out! I'll reply to your email within 24–48 hours.", when: 'now' },
 ];
 
 const LockScreen = React.memo<{ time: string; portrait: boolean; messages?: typeof LOCK_MESSAGES }>(({
@@ -1849,7 +1849,7 @@ const ChatScreen: React.FC<{
           className="-mt-1.5 relative px-3 py-1 rounded-full bg-white shadow-[0_2px_14px_rgba(0,0,0,.1)] border border-black/5 font-semibold tracking-[-0.01em] flex items-center gap-1"
           style={{ fontSize: 14 * s }}
         >
-          Gene Mathew Wagas
+          Gene Wagas
           <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeOpacity=".35" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
             <path d="m1 1 4 4-4 4" />
           </svg>
@@ -2021,7 +2021,7 @@ const CallScreen = React.memo<{ email?: string; portrait: boolean; time: string;
             Incoming call · about your next project
           </span>
           <h3 className="text-white font-semibold tracking-[-0.03em] mt-1.5 leading-none" style={{ fontSize: portrait ? 32 : 46 }}>
-            Gene Mathew Wagas
+            Gene Wagas
           </h3>
         </div>
         {!portrait && <Monogram size={112} className="relative z-10 mt-9 text-[44px] ring-4 ring-white/15" />}
@@ -2067,7 +2067,7 @@ const ScreenPage = React.memo<{ projects: ProjectItem[]; portrait: boolean }>(({
   const cols = portrait ? 'grid grid-cols-1 gap-y-6' : 'grid grid-cols-2 gap-x-20';
   const label = 'text-[11px] font-medium uppercase tracking-[0.14em] text-black/45';
   const body = 'text-[15px] leading-[1.6] text-black/65 max-w-[360px] text-justify hyphens-auto';
-  const gap = portrait ? 64 : 104; // space between project chapters
+  const gap = portrait ? 44 : 72; // space between project chapters
 
   return (
     <div className={`text-[#111] ${pad}`} style={{ paddingTop: portrait ? 52 : 64, paddingBottom: portrait ? 100 : 140 }}>
@@ -2128,12 +2128,12 @@ const ScreenPage = React.memo<{ projects: ProjectItem[]; portrait: boolean }>(({
 
       {/* One chapter per project */}
       {projects.map((p, i) => (
-        <article key={p.id} className={`${cols} items-center`} style={{ marginTop: i === 0 ? (portrait ? 28 : 40) : gap }}>
+        <article key={p.id} className={`${cols} items-start`} style={{ marginTop: i === 0 ? (portrait ? 28 : 36) : gap }}>
           <div className="flex flex-col">
             <span className={label}>
               {String(i + 1).padStart(2, '0')} — {p.category}
             </span>
-            <h3 className="font-black tracking-[-0.055em] leading-[0.9] mt-3" style={{ fontSize: portrait ? 44 : 64 }}>
+            <h3 className="font-black tracking-[-0.055em] leading-[0.92] mt-2.5" style={{ fontSize: portrait ? (p.title.length > 20 ? 34 : 44) : (p.title.length > 20 ? 50 : 64) }}>
               {p.title}
             </h3>
             {p.description && (
