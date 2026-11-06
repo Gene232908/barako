@@ -143,8 +143,93 @@
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
       })(window, document, "clarity", "script", "z985sk1e91");
     </script>
+
+    <!-- Instant Preloader Styles (Zero-Delay First Paint) -->
+    <style>
+      #preloader {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background-color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s;
+        will-change: opacity, transform;
+      }
+      #preloader.preloader-hidden {
+        opacity: 0;
+        transform: translateY(-8px);
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .preloader-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        user-select: none;
+      }
+      .preloader-title {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 800;
+        font-size: 26px;
+        letter-spacing: -0.06em;
+        text-transform: uppercase;
+        color: #000000;
+        display: inline-flex;
+        align-items: flex-start;
+      }
+      .preloader-tm {
+        font-size: 11px;
+        font-weight: 700;
+        margin-left: 2px;
+      }
+      .preloader-line {
+        width: 130px;
+        height: 2px;
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: 9999px;
+        overflow: hidden;
+        position: relative;
+      }
+      .preloader-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 0%;
+        background: #000000;
+        border-radius: 9999px;
+        animation: preloader-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      @keyframes preloader-grow {
+        0% { width: 0%; }
+        50% { width: 72%; }
+        100% { width: 100%; }
+      }
+      .preloader-sub {
+        font-family: monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.4);
+      }
+    </style>
   </head>
   <body class="bg-white text-black antialiased selection:bg-black selection:text-white" data-clarity-unmask="true">
+    <div id="preloader" aria-hidden="true">
+      <div class="preloader-box">
+        <div class="preloader-title">GW<span class="preloader-tm">™</span></div>
+        <div class="preloader-line">
+          <div class="preloader-fill"></div>
+        </div>
+        <div class="preloader-sub">GENE WAGAS · 2026</div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -122,6 +122,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
   const [contentH, setContentH] = useState(0);
   const [nameSize, setNameSize] = useState({ lw: 1, lh: 1, rw: 1, rh: 1 });
   const [finish, setFinish] = useState<FinishKey>('titanium');
+  const [isReady, setIsReady] = useState(false);
   // Lights the intro bulb once the device is (nearly) open; resets when it folds shut so it replays.
   const [litStore] = useState(createLitStore);
   const litRef = useRef(false);
@@ -433,6 +434,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     lastInner.current = -1;
     apply(cur.current, performance.now());
     kick.current();
+    setIsReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portrait, vp.w, vp.h, scale, contentH, nameSize, finish]);
 
@@ -624,15 +626,15 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       className="relative w-full select-none"
       style={{ height: totalH, background: pageBg, transition: 'background .6s ease' }}
     >
-      <div className="sticky top-0 w-full overflow-hidden" style={{ height: stageH }}>
+      <div className="sticky top-0 w-full overflow-hidden" style={{ height: stageH, opacity: isReady ? 1 : 0, transition: 'opacity 0.25s ease' }}>
         {/* Flanking names behind the device */}
         <div style={{ ...fill, pointerEvents: 'none', overflow: 'hidden' }}>
-          <div ref={el.nmL} style={{ ...abs, left: 0, top: 0, willChange: 'transform, opacity' }}>
+          <div ref={el.nmL} style={{ ...abs, left: 0, top: 0, opacity: 0, willChange: 'transform, opacity' }}>
             <div ref={nameLInner} className="font-hero-title font-black text-[#111] leading-[0.85] tracking-[-0.06em] whitespace-nowrap" style={{ fontSize: 200, width: 'max-content' }}>
               PROJ
             </div>
           </div>
-          <div ref={el.nmR} style={{ ...abs, left: 0, top: 0, willChange: 'transform, opacity' }}>
+          <div ref={el.nmR} style={{ ...abs, left: 0, top: 0, opacity: 0, willChange: 'transform, opacity' }}>
             <div ref={nameRInner} className="font-hero-title font-black text-[#111] leading-[0.85] tracking-[-0.06em] whitespace-nowrap" style={{ fontSize: 200, width: 'max-content' }}>
               ECTS
             </div>
