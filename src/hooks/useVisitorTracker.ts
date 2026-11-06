@@ -214,8 +214,12 @@ export function useVisitorTracker() {
         activeSectionIdRef.current = sectionId;
         currentSectionStartRef.current = now;
 
-        // Sync updates
-        syncVisitorSession(updatedSession);
+        // Sync updates off the critical animation frame
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(() => syncVisitorSession(updatedSession));
+        } else {
+          setTimeout(() => syncVisitorSession(updatedSession), 50);
+        }
         tagClaritySection(sectionId, sectionName);
 
         if (analyticsObj) {
@@ -224,12 +228,12 @@ export function useVisitorTracker() {
             section_name: sectionName,
           });
         }
-      }, 700);
+      }, 1000);
     };
 
     const observer = new IntersectionObserver(handleSectionIntersect, {
       rootMargin: '-10% 0px -25% 0px',
-      threshold: [0.2, 0.4, 0.6],
+      threshold: 0.25,
     });
 
     trackedSectionIds.forEach((id) => {
@@ -237,7 +241,7 @@ export function useVisitorTracker() {
       if (el) observer.observe(el);
     });
 
-    // 5. Heartbeat timer: every 15 seconds, ping presence and duration
+    // 5. Heartbeat timer: every 30 seconds, ping presence and duration without thrashing
     const heartbeatInterval = setInterval(() => {
       const currentSession = sessionRef.current;
       if (!currentSession) return;
@@ -259,7 +263,7 @@ export function useVisitorTracker() {
 
       sessionRef.current = heartbeatSession;
       syncVisitorSession(heartbeatSession);
-    }, 15000);
+    }, 30000);
 
     // 6. Final flush on page unload or visibility change
     const handleVisibilityOrUnload = () => {

@@ -366,18 +366,26 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     let r = -1;
     let visible = true;
 
-    const target = () => {
+    const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    let sCached = 0;
+    let dirtyScroll = true;
+
+    const measureTarget = () => {
       const s = sectionRef.current;
-      return s ? Math.max(0, -s.getBoundingClientRect().top) : 0;
+      sCached = s ? Math.max(0, -s.getBoundingClientRect().top) : 0;
+      dirtyScroll = false;
+      return sCached;
     };
-    const needsFloat = () => visible && MOTION.float && !reduced && lastK.current > 5e-4;
+
+    const target = () => (dirtyScroll ? measureTarget() : sCached);
+    const needsFloat = () => visible && MOTION.float && !reduced && !isTouch && lastK.current > 5e-4;
 
     const tick = (now: number) => {
       const s = target();
       const dt = last ? Math.min(64, now - last) : 16.7;
       last = now;
-      // Lenis already eases the page scroll; easing again here would make the fold trail behind.
-      if (r < 0 || reduced || isSmoothScrolling()) r = s;
+      // Lenis already eases page scroll on desktop; on touch, follow native momentum 1:1 without artificial lag.
+      if (r < 0 || reduced || isSmoothScrolling() || isTouch) r = s;
       else r += (s - r) * (1 - (1 - clamp(MOTION.smoothing, 0.02, 1)) ** (dt / 16.67));
       if (Math.abs(s - r) < 0.1) r = s;
       cur.current = r;
@@ -389,6 +397,7 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
       }
     };
     const start = () => {
+      dirtyScroll = true;
       if (!running) {
         running = true;
         raf = requestAnimationFrame(tick);
@@ -402,12 +411,12 @@ export const WorksSection: React.FC<WorksSectionProps> = ({ projects, email }) =
     });
     if (sectionRef.current) io.observe(sectionRef.current);
 
-    r = target();
+    r = measureTarget();
     cur.current = r;
     apply(r, performance.now());
     start();
     window.addEventListener('scroll', start, { passive: true });
-    window.addEventListener('resize', start);
+    window.addEventListener('resize', start, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
       io.disconnect();

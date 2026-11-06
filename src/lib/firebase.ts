@@ -113,12 +113,17 @@ export function initFirebaseAnalytics(): Promise<Analytics | null> {
   });
 }
 
-// Fallback Local Storage functions for resilient tracking even if Firestore rules are locked
+// Memory cache to avoid repeated JSON.parse/stringify on the scroll thread
+let cachedLocalSessions: VisitorSession[] | null = null;
+let saveDebounceTimer: any = null;
+
 export function getLocalSessions(): VisitorSession[] {
   if (typeof window === 'undefined') return [];
+  if (cachedLocalSessions) return cachedLocalSessions;
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_SESSIONS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    cachedLocalSessions = raw ? JSON.parse(raw) : [];
+    return cachedLocalSessions || [];
   } catch {
     return [];
   }
@@ -126,20 +131,26 @@ export function getLocalSessions(): VisitorSession[] {
 
 export function saveLocalSession(session: VisitorSession) {
   if (typeof window === 'undefined') return;
-  try {
-    const sessions = getLocalSessions();
-    const existingIdx = sessions.findIndex((s) => s.id === session.id);
-    if (existingIdx >= 0) {
-      sessions[existingIdx] = session;
-    } else {
-      sessions.unshift(session);
-    }
-    // Keep last 100 sessions locally
-    const trimmed = sessions.slice(0, 100);
-    localStorage.setItem(LOCAL_STORAGE_SESSIONS_KEY, JSON.stringify(trimmed));
-  } catch {
-    // ignore quota errors
+  const sessions = getLocalSessions();
+  const existingIdx = sessions.findIndex((s) => s.id === session.id);
+  if (existingIdx >= 0) {
+    sessions[existingIdx] = session;
+  } else {
+    sessions.unshift(session);
   }
+  cachedLocalSessions = sessions.slice(0, 100);
+
+  // Debounce saving to localStorage to prevent blocking main scroll thread
+  clearTimeout(saveDebounceTimer);
+  saveDebounceTimer = setTimeout(() => {
+    try {
+      if (cachedLocalSessions) {
+        localStorage.setItem(LOCAL_STORAGE_SESSIONS_KEY, JSON.stringify(cachedLocalSessions));
+      }
+    } catch {
+      // ignore quota
+    }
+  }, 1000);
 }
 
 // Record or update a visitor session in Firestore (with localStorage fallback)

@@ -16,21 +16,24 @@ export async function initClarity(customProjectId?: string): Promise<{ success: 
   }
 
   const id = customProjectId || (await fetchClarityProjectId()) || DEFAULT_CLARITY_PROJECT_ID;
-  if (!id) {
-    console.debug('[Clarity] Awaiting project ID configuration');
-    return { success: false, projectId: '' };
+  if (!id) return { success: false, projectId: '' };
+
+  currentClarityProjectId = id;
+
+  // If already loaded via script tag in index.html, reuse it without attaching duplicate observers
+  if (typeof (window as any).clarity === 'function') {
+    isClarityInitialized = true;
+    return { success: true, projectId: id };
   }
 
   try {
-    if (!isClarityInitialized || currentClarityProjectId !== id) {
+    if (!isClarityInitialized) {
       Clarity.init(id);
       isClarityInitialized = true;
-      currentClarityProjectId = id;
-      console.log(`[Clarity] Initialized successfully with Project ID: ${id}`);
     }
     return { success: true, projectId: id };
   } catch (err) {
-    console.warn('[Clarity] Initialization notice:', err);
+    console.debug('[Clarity] init notice:', err);
     return { success: false, projectId: id };
   }
 }
@@ -61,11 +64,18 @@ export async function updateClarityProjectId(projectId: string): Promise<boolean
  * Tag current section in Microsoft Clarity for Heatmap & Session Recording filters
  */
 export function tagClaritySection(sectionId: string, sectionTitle: string) {
-  if (typeof window === 'undefined' || !isClarityInitialized) return;
+  if (typeof window === 'undefined') return;
   try {
-    Clarity.setTag('current_section', sectionId);
-    Clarity.setTag('section_title', sectionTitle);
-    Clarity.event(`view_${sectionId}`);
+    const wClarity = (window as any).clarity;
+    if (typeof wClarity === 'function') {
+      wClarity('set', 'current_section', sectionId);
+      wClarity('set', 'section_title', sectionTitle);
+      wClarity('event', `view_${sectionId}`);
+    } else if (isClarityInitialized) {
+      Clarity.setTag('current_section', sectionId);
+      Clarity.setTag('section_title', sectionTitle);
+      Clarity.event(`view_${sectionId}`);
+    }
   } catch {
     // ignore
   }
@@ -75,9 +85,14 @@ export function tagClaritySection(sectionId: string, sectionTitle: string) {
  * Identify visitor in Microsoft Clarity
  */
 export function identifyClarityVisitor(visitorId: string, sessionId: string) {
-  if (typeof window === 'undefined' || !isClarityInitialized) return;
+  if (typeof window === 'undefined') return;
   try {
-    Clarity.identify(visitorId, sessionId, window.location.pathname, 'Visitor');
+    const wClarity = (window as any).clarity;
+    if (typeof wClarity === 'function') {
+      wClarity('identify', visitorId, sessionId, window.location.pathname, 'Visitor');
+    } else if (isClarityInitialized) {
+      Clarity.identify(visitorId, sessionId, window.location.pathname, 'Visitor');
+    }
   } catch {
     // ignore
   }

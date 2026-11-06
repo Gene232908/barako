@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { WorksSection } from './components/WorksSection';
@@ -6,10 +6,13 @@ import { AboutSection } from './components/AboutSection';
 import { StackSection } from './components/StackSection';
 import { ServicesSection } from './components/ServicesSection';
 import { Footer } from './components/Footer';
-import { AdminDashboard } from './components/admin/AdminDashboard';
 import { portfolioData } from './data/portfolioData';
 import { initSmoothScroll } from './lib/smoothScroll';
 import { useVisitorTracker } from './hooks/useVisitorTracker';
+
+const AdminDashboard = lazy(() =>
+  import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
 
 export function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -102,11 +105,15 @@ export function App() {
         onOpenAdmin={() => setIsAdminOpen(true)}
       />
 
-      {/* Admin Dashboard & Microsoft Clarity Control Modal */}
-      <AdminDashboard
-        isOpen={isAdminOpen}
-        onClose={handleCloseAdmin}
-      />
+      {/* Admin Dashboard & Microsoft Clarity Control Modal (Loaded on demand) */}
+      {isAdminOpen && (
+        <Suspense fallback={null}>
+          <AdminDashboard
+            isOpen={isAdminOpen}
+            onClose={handleCloseAdmin}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
