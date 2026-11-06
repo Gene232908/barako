@@ -47,7 +47,7 @@ export const Hero: React.FC<HeroProps> = ({
         Fixed at z-0 on desktop so the next section rolls up over it.
         Relative on mobile for smooth scrolling.
       */}
-      <section className="relative md:fixed md:top-0 md:left-0 w-full min-h-[80vh] md:min-h-screen bg-white z-0 flex flex-col justify-center items-center px-3 sm:px-6 md:px-10 pt-24 md:pt-0 overflow-hidden">
+      <section id="hero" className="relative md:fixed md:top-0 md:left-0 w-full min-h-[80vh] md:min-h-screen bg-white z-0 flex flex-col justify-center items-center px-3 sm:px-6 md:px-10 pt-24 md:pt-0 overflow-hidden">
         {/* Title & Subtext Wrapper: w-fit ensures the subtexts span the exact width of GENE WAGAS */}
         <div className="w-fit max-w-[94vw] flex flex-col items-center select-none">
           {/* 

@@ -7,12 +7,14 @@ interface FooterProps {
   navLinks: { label: string; href: string }[];
   socials: SocialLink[];
   contacts: ContactInfo;
+  onOpenAdmin?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
   navLinks,
   socials,
   contacts,
+  onOpenAdmin,
 }) => {
   return (
     <footer
@@ -76,14 +78,23 @@ export const Footer: React.FC<FooterProps> = ({
           </BlurReveal>
         </div>
 
-        {/* Bottom Bar: Copyright */}
+        {/* Bottom Bar: Copyright & Admin Portal */}
         <BlurReveal delay={450} className="pt-6 border-t border-black/5 flex items-center justify-between">
           <p className="text-[13px] font-body-bold text-[#808080] uppercase tracking-[-0.04em]">
             {contacts.copyright}
           </p>
 
-          <div className="text-[11px] font-mono tracking-tight text-black/40 uppercase">
-            GENE WAGAS
+          <div className="flex items-center gap-4 text-[11px] font-mono tracking-tight text-black/40 uppercase">
+            <button
+              type="button"
+              onClick={onOpenAdmin}
+              className="hover:text-black transition-colors cursor-pointer flex items-center gap-1.5 opacity-60 hover:opacity-100 py-1"
+              title="Open Admin Dashboard (Alt+A or #admin)"
+              aria-label="Open Admin Dashboard"
+            >
+              
+            </button>
+            <span>GENE WAGAS</span>
           </div>
         </BlurReveal>
       </div>
