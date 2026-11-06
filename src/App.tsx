@@ -23,7 +23,7 @@ export function App() {
   // Track visitor sessions, section navigation & Microsoft Clarity
   useVisitorTracker();
 
-  // Gracefully dismiss preloader once fonts and layout have fully settled
+  // Super-snappy minimal preloader dismissal
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -33,19 +33,12 @@ export function App() {
       el.classList.add('preloader-hidden');
       setTimeout(() => {
         el.remove();
-      }, 550);
+      }, 300);
     };
 
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(() => {
-        setTimeout(dismissPreloader, 400);
-      });
-    } else {
-      setTimeout(dismissPreloader, 500);
-    }
-
-    const fallback = setTimeout(dismissPreloader, 1500);
-    return () => clearTimeout(fallback);
+    // Fast 120ms delay lets layout effects position elements cleanly, then fades out immediately
+    const timer = setTimeout(dismissPreloader, 120);
+    return () => clearTimeout(timer);
   }, []);
 
   // Listen to #admin hash or keyboard shortcut (Alt + A) to open Admin Portal
