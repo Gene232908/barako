@@ -1,12 +1,20 @@
-import { useEffect, useRef } from 'react';
-import {
-  syncVisitorSession,
-  initFirebaseAnalytics,
-  type VisitorSession,
-  type SectionVisit,
-} from '../lib/firebase';
-import { initClarity, tagClaritySection, identifyClarityVisitor } from '../lib/clarity';
-import { logEvent } from 'firebase/analytics';
+import { useEffect } from 'react';
+import type { VisitorSession, SectionVisit } from '../lib/firebase';
+
+// Firebase and Clarity are loaded only after the page is up and the browser is idle, so they never
+// compete with the first render (they were ~600 kB of the initial bundle).
+const loadTrackingModules = () =>
+  Promise.all([import('../lib/firebase'), import('../lib/clarity'), import('firebase/analytics')]);
+
+const whenIdle = (fn: () => void) => {
+  const run = () => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 4000 });
+    else window.setTimeout(fn, 1500);
+  };
+  if (document.readyState === 'complete') window.setTimeout(run, 1500);
+  else window.addEventListener('load', () => window.setTimeout(run, 1500), { once: true });
+};
 
 const SECTION_NAMES: Record<string, string> = {
   hero: 'Hero (Introduction)',
@@ -48,9 +56,10 @@ function getDeviceInfo() {
   else if (ua.includes('OPR/') || ua.includes('Opera')) browser = 'Opera';
 
   // OS
+  // iPhone/iPad user agents also say "like Mac OS X", so check them first.
   let os = 'Windows';
-  if (ua.includes('Mac OS')) os = 'macOS';
-  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+  if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+  else if (ua.includes('Mac OS')) os = 'macOS';
   else if (ua.includes('Android')) os = 'Android';
   else if (ua.includes('Linux')) os = 'Linux';
 
@@ -99,196 +108,218 @@ function getOrCreateSessionId(): string {
 }
 
 export function useVisitorTracker() {
-  const sessionRef = useRef<VisitorSession | null>(null);
-  const currentSectionStartRef = useRef<number>(0);
-  const activeSectionIdRef = useRef<string>('hero');
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Do not track if viewing in admin mode directly
-    const isAdmin = window.location.hash === '#admin';
-    if (isAdmin) return;
+    // Don't count the admin view or local development as visits.
+    const { hash, hostname } = window.location;
+    if (hash === '#admin' || import.meta.env.DEV || hostname === 'localhost' || hostname === '127.0.0.1') return;
 
-    // 1. Initialize Microsoft Clarity
-    initClarity();
-
-    // 2. Initialize Firebase Analytics
-    let analyticsObj: any = null;
-    initFirebaseAnalytics().then((a) => {
-      analyticsObj = a;
-      if (analyticsObj) {
-        logEvent(analyticsObj, 'page_view', { page_title: document.title });
-      }
+    let disposed = false;
+    let cleanup = () => {};
+    whenIdle(() => {
+      loadTrackingModules()
+        .then(([firebase, clarity, analytics]) => {
+          if (!disposed) cleanup = startTracking(firebase, clarity, analytics.logEvent);
+        })
+        .catch((err) => console.debug('[tracker] not started:', err));
     });
 
-    // 3. Create or resume session
-    const visitorId = getOrCreateVisitorId();
-    const sessionId = getOrCreateSessionId();
-    const { deviceType, browser, os, screen, referrer } = getDeviceInfo();
-
-    identifyClarityVisitor(visitorId, sessionId);
-
-    const initialSession: VisitorSession = {
-      id: sessionId,
-      visitorId,
-      startedAt: Date.now(),
-      lastActiveAt: Date.now(),
-      userAgent: navigator.userAgent,
-      deviceType,
-      browser,
-      os,
-      screen,
-      referrer,
-      currentSection: 'hero',
-      currentSectionName: SECTION_NAMES.hero,
-      sections: [
-        {
-          sectionId: 'hero',
-          sectionName: SECTION_NAMES.hero,
-          enteredAt: Date.now(),
-          durationSeconds: 0,
-        },
-      ],
-      totalDurationSeconds: 0,
+    return () => {
+      disposed = true;
+      cleanup();
     };
+  }, []);
+}
 
-    sessionRef.current = initialSession;
-    currentSectionStartRef.current = Date.now();
-    activeSectionIdRef.current = 'hero';
+function startTracking(
+  { syncVisitorSession, initFirebaseAnalytics }: typeof import('../lib/firebase'),
+  { initClarity, tagClaritySection, identifyClarityVisitor }: typeof import('../lib/clarity'),
+  logEvent: typeof import('firebase/analytics').logEvent,
+) {
+  const sessionRef: { current: VisitorSession | null } = { current: null };
+  const currentSectionStartRef = { current: 0 };
+  const activeSectionIdRef = { current: 'hero' };
 
-    syncVisitorSession(initialSession);
-    tagClaritySection('hero', SECTION_NAMES.hero);
+  // 1. Initialize Microsoft Clarity
+  initClarity();
 
-    // 4. Track Section Navigation with IntersectionObserver
-    const trackedSectionIds = ['hero', 'works', 'about', 'stack', 'services', 'contact'];
-    let debounceTimer: any = null;
+  // 2. Initialize Firebase Analytics
+  let analyticsObj: any = null;
+  initFirebaseAnalytics().then((a) => {
+    analyticsObj = a;
+    if (analyticsObj) {
+      logEvent(analyticsObj, 'page_view', { page_title: document.title });
+    }
+  });
 
-    const handleSectionIntersect = (entries: IntersectionObserverEntry[]) => {
-      // Find the entry that has the highest intersection ratio
-      const visibleEntries = entries.filter((e) => e.isIntersecting && e.intersectionRatio > 0.25);
-      if (visibleEntries.length === 0) return;
+  // 3. Create or resume session
+  const visitorId = getOrCreateVisitorId();
+  const sessionId = getOrCreateSessionId();
+  const { deviceType, browser, os, screen, referrer } = getDeviceInfo();
 
-      visibleEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-      const topEntry = visibleEntries[0];
-      const sectionId = topEntry.target.id;
-      if (!sectionId || sectionId === activeSectionIdRef.current) return;
+  identifyClarityVisitor(visitorId, sessionId);
 
-      clearTimeout(debounceTimer);
-      // Debounce slightly to ensure intentional lingering, not rapid skip
-      debounceTimer = setTimeout(() => {
-        const now = Date.now();
-        const durationOnPrev = Math.max(1, Math.round((now - currentSectionStartRef.current) / 1000));
-        const prevSectionId = activeSectionIdRef.current;
+  const initialSession: VisitorSession = {
+    id: sessionId,
+    visitorId,
+    startedAt: Date.now(),
+    lastActiveAt: Date.now(),
+    userAgent: navigator.userAgent,
+    deviceType,
+    browser,
+    os,
+    screen,
+    referrer,
+    currentSection: 'hero',
+    currentSectionName: SECTION_NAMES.hero,
+    sections: [
+      {
+        sectionId: 'hero',
+        sectionName: SECTION_NAMES.hero,
+        enteredAt: Date.now(),
+        durationSeconds: 0,
+      },
+    ],
+    totalDurationSeconds: 0,
+  };
 
-        const currentSession = sessionRef.current;
-        if (!currentSession) return;
+  sessionRef.current = initialSession;
+  currentSectionStartRef.current = Date.now();
+  activeSectionIdRef.current = 'hero';
 
-        // Update previous section's duration
-        const lastVisit = currentSession.sections[currentSession.sections.length - 1];
-        if (lastVisit && lastVisit.sectionId === prevSectionId) {
-          lastVisit.durationSeconds = (lastVisit.durationSeconds || 0) + durationOnPrev;
-        }
+  syncVisitorSession(initialSession);
+  tagClaritySection('hero', SECTION_NAMES.hero);
 
-        // Add new section navigation
-        const sectionName = SECTION_NAMES[sectionId] || sectionId;
-        const newVisit: SectionVisit = {
-          sectionId,
-          sectionName,
-          enteredAt: now,
-          durationSeconds: 0,
-        };
+  // 4. Track Section Navigation with IntersectionObserver
+  const trackedSectionIds = ['hero', 'works', 'about', 'stack', 'services', 'contact'];
+  let debounceTimer: any = null;
 
-        const totalDuration = Math.round((now - currentSession.startedAt) / 1000);
+  const handleSectionIntersect = (entries: IntersectionObserverEntry[]) => {
+    // Find the entry that has the highest intersection ratio
+    const visibleEntries = entries.filter((e) => e.isIntersecting && e.intersectionRatio > 0.25);
+    if (visibleEntries.length === 0) return;
 
-        const updatedSession: VisitorSession = {
-          ...currentSession,
-          lastActiveAt: now,
-          currentSection: sectionId,
-          currentSectionName: sectionName,
-          sections: [...currentSession.sections, newVisit],
-          totalDurationSeconds: totalDuration,
-        };
+    visibleEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+    const topEntry = visibleEntries[0];
+    const sectionId = topEntry.target.id;
+    if (!sectionId || sectionId === activeSectionIdRef.current) return;
 
-        sessionRef.current = updatedSession;
-        activeSectionIdRef.current = sectionId;
-        currentSectionStartRef.current = now;
+    clearTimeout(debounceTimer);
+    // Debounce slightly to ensure intentional lingering, not rapid skip
+    debounceTimer = setTimeout(() => {
+      const now = Date.now();
+      const durationOnPrev = Math.max(1, Math.round((now - currentSectionStartRef.current) / 1000));
+      const prevSectionId = activeSectionIdRef.current;
 
-        // Sync updates off the critical animation frame
-        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-          (window as any).requestIdleCallback(() => syncVisitorSession(updatedSession));
-        } else {
-          setTimeout(() => syncVisitorSession(updatedSession), 50);
-        }
-        tagClaritySection(sectionId, sectionName);
-
-        if (analyticsObj) {
-          logEvent(analyticsObj, 'view_section', {
-            section_id: sectionId,
-            section_name: sectionName,
-          });
-        }
-      }, 1000);
-    };
-
-    const observer = new IntersectionObserver(handleSectionIntersect, {
-      rootMargin: '-10% 0px -25% 0px',
-      threshold: 0.25,
-    });
-
-    trackedSectionIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    // 5. Heartbeat timer: every 30 seconds, ping presence and duration without thrashing
-    const heartbeatInterval = setInterval(() => {
       const currentSession = sessionRef.current;
       if (!currentSession) return;
 
-      const now = Date.now();
-      const currentSecDuration = Math.round((now - currentSectionStartRef.current) / 1000);
+      // Update previous section's duration
       const lastVisit = currentSession.sections[currentSession.sections.length - 1];
-      if (lastVisit) {
-        lastVisit.durationSeconds = currentSecDuration;
+      if (lastVisit && lastVisit.sectionId === prevSectionId) {
+        lastVisit.durationSeconds = (lastVisit.durationSeconds || 0) + durationOnPrev;
       }
+
+      // Add new section navigation
+      const sectionName = SECTION_NAMES[sectionId] || sectionId;
+      const newVisit: SectionVisit = {
+        sectionId,
+        sectionName,
+        enteredAt: now,
+        durationSeconds: 0,
+      };
 
       const totalDuration = Math.round((now - currentSession.startedAt) / 1000);
 
-      const heartbeatSession: VisitorSession = {
+      const updatedSession: VisitorSession = {
         ...currentSession,
         lastActiveAt: now,
+        currentSection: sectionId,
+        currentSectionName: sectionName,
+        sections: [...currentSession.sections, newVisit],
         totalDurationSeconds: totalDuration,
       };
 
-      sessionRef.current = heartbeatSession;
-      syncVisitorSession(heartbeatSession);
-    }, 30000);
+      sessionRef.current = updatedSession;
+      activeSectionIdRef.current = sectionId;
+      currentSectionStartRef.current = now;
 
-    // 6. Final flush on page unload or visibility change
-    const handleVisibilityOrUnload = () => {
-      const currentSession = sessionRef.current;
-      if (!currentSession) return;
+      // Sync updates off the critical animation frame
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => syncVisitorSession(updatedSession));
+      } else {
+        setTimeout(() => syncVisitorSession(updatedSession), 50);
+      }
+      tagClaritySection(sectionId, sectionName);
 
-      const now = Date.now();
-      const finalDuration = Math.round((now - currentSession.startedAt) / 1000);
-      const updated: VisitorSession = {
-        ...currentSession,
-        lastActiveAt: now,
-        totalDurationSeconds: finalDuration,
-      };
-      syncVisitorSession(updated);
+      if (analyticsObj) {
+        logEvent(analyticsObj, 'view_section', {
+          section_id: sectionId,
+          section_name: sectionName,
+        });
+      }
+    }, 1000);
+  };
+
+  const observer = new IntersectionObserver(handleSectionIntersect, {
+    rootMargin: '-10% 0px -25% 0px',
+    threshold: 0.25,
+  });
+
+  trackedSectionIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+
+  // 5. Heartbeat timer: every 30 seconds, ping presence and duration without thrashing. Only while
+  // the tab is actually on screen, so a tab left open in the background drops out of "viewing now".
+  const heartbeatInterval = setInterval(() => {
+    const currentSession = sessionRef.current;
+    if (!currentSession || document.visibilityState !== 'visible') return;
+
+    const now = Date.now();
+    const currentSecDuration = Math.round((now - currentSectionStartRef.current) / 1000);
+    const lastVisit = currentSession.sections[currentSession.sections.length - 1];
+    if (lastVisit) {
+      lastVisit.durationSeconds = currentSecDuration;
+    }
+
+    const totalDuration = Math.round((now - currentSession.startedAt) / 1000);
+
+    const heartbeatSession: VisitorSession = {
+      ...currentSession,
+      lastActiveAt: now,
+      totalDurationSeconds: totalDuration,
     };
 
-    window.addEventListener('visibilitychange', handleVisibilityOrUnload);
-    window.addEventListener('beforeunload', handleVisibilityOrUnload);
+    sessionRef.current = heartbeatSession;
+    syncVisitorSession(heartbeatSession);
+  }, 30000);
 
-    return () => {
-      clearTimeout(debounceTimer);
-      clearInterval(heartbeatInterval);
-      observer.disconnect();
-      window.removeEventListener('visibilitychange', handleVisibilityOrUnload);
-      window.removeEventListener('beforeunload', handleVisibilityOrUnload);
+  // 6. Final flush on page unload or visibility change
+  const handleVisibilityOrUnload = () => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) return;
+
+    const now = Date.now();
+    const finalDuration = Math.round((now - currentSession.startedAt) / 1000);
+    const updated: VisitorSession = {
+      ...currentSession,
+      lastActiveAt: now,
+      totalDurationSeconds: finalDuration,
     };
-  }, []);
+    syncVisitorSession(updated);
+  };
+
+  window.addEventListener('visibilitychange', handleVisibilityOrUnload);
+  window.addEventListener('beforeunload', handleVisibilityOrUnload);
+
+  return () => {
+    clearTimeout(debounceTimer);
+    clearInterval(heartbeatInterval);
+    observer.disconnect();
+    window.removeEventListener('visibilitychange', handleVisibilityOrUnload);
+    window.removeEventListener('beforeunload', handleVisibilityOrUnload);
+  };
 }

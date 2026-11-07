@@ -915,6 +915,7 @@ const Crossfade: React.FC<{ images: string[]; alt: string; sites?: SampleSite[] 
             src={src}
             alt={on ? alt : ''}
             draggable={false}
+            loading="lazy"
             decoding="async"
             className="absolute inset-0 w-full h-full object-cover"
             style={{
@@ -1226,7 +1227,7 @@ const SiteViewer: React.FC<{ title: string; sites: SampleSite[]; start: number; 
                     aria-current={n === k}
                     className={`relative w-16 h-12 md:w-[76px] md:h-14 rounded-[12px] overflow-hidden cursor-pointer transition-all duration-300 ${n === k ? 'ring-2 ring-[#111] ring-offset-2 ring-offset-[#FAFAF8]' : 'opacity-50 hover:opacity-100'}`}
                   >
-                    <img src={src} alt="" draggable={false} className="w-full h-full object-cover" />
+                    <img src={src} alt="" draggable={false} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </button>
                 ))}
                 <span className="ml-2 font-body-bold text-[11px] text-black/35 tabular-nums">
@@ -1299,7 +1300,7 @@ const SiteViewer: React.FC<{ title: string; sites: SampleSite[]; start: number; 
                 aria-current={on}
                 className={`flex items-center gap-3 shrink-0 rounded-[16px] p-2 pr-4 text-left cursor-pointer transition-all duration-300 ${on ? 'bg-white shadow-[0_6px_20px_-10px_rgba(0,0,0,.3)] ring-1 ring-black/10' : 'opacity-60 hover:opacity-100 hover:bg-black/[0.03]'}`}
               >
-                <img src={s.images[0]} alt="" draggable={false} className="w-14 h-10 lg:w-16 lg:h-12 rounded-[10px] object-cover shrink-0" />
+                <img src={s.images[0]} alt="" draggable={false} loading="lazy" decoding="async" className="w-14 h-10 lg:w-16 lg:h-12 rounded-[10px] object-cover shrink-0" />
                 <span className="min-w-0">
                   <span className="block text-[13px] font-bold tracking-[-0.02em] truncate">{s.name}</span>
                   <span className="block text-[11px] text-black/45 truncate">{s.kind}</span>
@@ -1341,17 +1342,17 @@ const SocialShowcase: React.FC<{ items: SampleSite[]; title: string }> = ({ item
             ))}
             <span className="ml-[3%] text-[7px] font-semibold text-black/40 truncate">Meta Business Suite · Planner</span>
           </div>
-          <img src={back} alt="" draggable={false} decoding="async" className="w-full h-[87%] object-cover object-left-top" />
+          <img src={back} alt="" draggable={false} loading="lazy" decoding="async" className="w-full h-[87%] object-cover object-left-top" />
         </div>
       )}
       {small && (
         <div className={`${card} left-[9%] bottom-[6%] w-[36%] h-[27%] shadow-[0_18px_36px_-16px_rgba(0,0,0,.45)] group-hover:-translate-y-1.5`}>
-          <img src={small} alt="" draggable={false} decoding="async" className="w-full h-full object-contain" />
+          <img src={small} alt="" draggable={false} loading="lazy" decoding="async" className="w-full h-full object-contain" />
         </div>
       )}
       {front && (
         <div className={`${card} right-[5%] top-[31%] w-[41%] h-[62%] shadow-[0_24px_48px_-18px_rgba(0,0,0,.5)] group-hover:-translate-y-2`}>
-          <img src={front} alt="" draggable={false} decoding="async" className="w-full h-full object-cover object-left-top" />
+          <img src={front} alt="" draggable={false} loading="lazy" decoding="async" className="w-full h-full object-cover object-left-top" />
           {items[0].stat && (
             <span className="absolute left-[6%] bottom-[5%] rounded-full bg-[#111] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[-0.01em] text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,.5)]">
               {items[0].stat}
@@ -1566,6 +1567,15 @@ const SlideToAnswer: React.FC<{ label: string; onDone: () => void; height: numbe
   const pad = 5;
   const knob = height - pad * 2;
   const max = () => Math.max(1, (track.current?.clientWidth ?? 0) - knob - pad * 2);
+  // Track width mirrored into state so render never reads the ref (handlers still measure live).
+  const [trackW, setTrackW] = useState(0);
+  useEffect(() => {
+    const node = track.current;
+    if (!node) return;
+    const ro = new ResizeObserver(() => setTrackW(node.clientWidth));
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
 
   const finish = () => {
     setX(max());
@@ -1592,7 +1602,7 @@ const SlideToAnswer: React.FC<{ label: string; onDone: () => void; height: numbe
     if (x > max() * 0.82) finish();
     else setX(0);
   };
-  const progress = x / max();
+  const progress = x / Math.max(1, trackW - knob - pad * 2);
 
   return (
     <div
@@ -2009,10 +2019,13 @@ const CallScreen = React.memo<{ email?: string; portrait: boolean; time: string;
   const [ended, setEnded] = useState(false); // conversation finished → back to the lock screen
   const [round, setRound] = useState(0); // remounts the slider so it resets after "back"
 
-  // Opened from a CTA elsewhere on the page (see lib/phoneChat).
-  useEffect(() => {
+  // Opened from a CTA elsewhere on the page (see lib/phoneChat): each new signal opens the chat.
+  // Adjusted during render rather than in an effect, so it lands in the same commit.
+  const [seenSignal, setSeenSignal] = useState(0);
+  if (openSignal !== seenSignal) {
+    setSeenSignal(openSignal);
     if (openSignal) setChat(true);
-  }, [openSignal]);
+  }
   const out: React.CSSProperties = { opacity: 0, filter: 'blur(16px)', transform: 'scale(1.06)', pointerEvents: 'none' };
   const inn: React.CSSProperties = { opacity: 0, filter: 'blur(16px)', transform: 'scale(.97)', pointerEvents: 'none' };
   const show: React.CSSProperties = { opacity: 1, filter: 'blur(0px)', transform: 'none' };
@@ -2166,7 +2179,7 @@ const ScreenPage = React.memo<{ projects: ProjectItem[]; portrait: boolean }>(({
             ) : p.images && p.images.length > 0 ? (
               <Crossfade images={p.images} alt={p.title} />
             ) : (
-              p.imageUrl && <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" draggable={false} />
+              p.imageUrl && <img src={p.imageUrl} alt={p.title} loading="lazy" decoding="async" className="w-full h-full object-cover" draggable={false} />
             )}
           </div>
         </article>

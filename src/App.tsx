@@ -9,6 +9,7 @@ import { Footer } from './components/Footer';
 import { portfolioData } from './data/portfolioData';
 import { initSmoothScroll } from './lib/smoothScroll';
 import { useVisitorTracker } from './hooks/useVisitorTracker';
+import { dismissPreloader } from './lib/preloader';
 
 const AdminDashboard = lazy(() =>
   import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
@@ -23,30 +24,8 @@ export function App() {
   // Track visitor sessions, section navigation & Microsoft Clarity
   useVisitorTracker();
 
-  // Gracefully dismiss preloader once fonts and layout have fully settled
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const dismissPreloader = () => {
-      const el = document.getElementById('preloader');
-      if (!el || el.classList.contains('preloader-hidden')) return;
-      el.classList.add('preloader-hidden');
-      setTimeout(() => {
-        el.remove();
-      }, 550);
-    };
-
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(() => {
-        setTimeout(dismissPreloader, 400);
-      });
-    } else {
-      setTimeout(dismissPreloader, 500);
-    }
-
-    const fallback = setTimeout(dismissPreloader, 1500);
-    return () => clearTimeout(fallback);
-  }, []);
+  // Lift the loading screen as soon as the app is mounted and the font is ready.
+  useEffect(dismissPreloader, []);
 
   // Listen to #admin hash or keyboard shortcut (Alt + A) to open Admin Portal
   useEffect(() => {

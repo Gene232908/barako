@@ -1,5 +1,4 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
 import {
   getFirestore,
   type Firestore,
@@ -10,6 +9,7 @@ import {
   query,
   orderBy,
   limit,
+  where,
   getDoc,
 } from 'firebase/firestore';
 import { getAnalytics, isSupported as isAnalyticsSupported, type Analytics } from 'firebase/analytics';
@@ -54,7 +54,6 @@ const LOCAL_STORAGE_SESSIONS_KEY = 'barako_visitor_sessions_v1';
 const LOCAL_STORAGE_CLARITY_KEY = 'barako_clarity_project_id';
 
 let appInstance: FirebaseApp | null = null;
-let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let analyticsInstance: Analytics | null = null;
 
@@ -65,15 +64,6 @@ export function getFirebaseApp(): FirebaseApp | null {
     appInstance = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   }
   return appInstance;
-}
-
-export function getFirebaseAuth(): Auth | null {
-  const app = getFirebaseApp();
-  if (!app) return null;
-  if (!authInstance) {
-    authInstance = getAuth(app);
-  }
-  return authInstance;
 }
 
 export function getFirebaseDb(): Firestore | null {
@@ -173,46 +163,25 @@ export async function syncVisitorSession(session: VisitorSession): Promise<void>
   }
 }
 
-// Subscribe to real-time visitor sessions for the Admin Dashboard
-export function subscribeToVisitors(callback: (sessions: VisitorSession[]) => void): () => void {
-  // Immediately supply local data so the dashboard is instant
-  const localData = getLocalSessions();
-  callback(localData);
-
+// Live feed of every visitor session active since `sinceMs`, newest first, for the admin view.
+export function subscribeToRecentVisitors(
+  sinceMs: number,
+  onData: (sessions: VisitorSession[]) => void,
+  onError: (message: string) => void,
+): () => void {
   const db = getFirebaseDb();
   if (!db) return () => {};
-
-  try {
-    const q = query(collection(db, 'visitors'), orderBy('lastActiveAt', 'desc'), limit(100));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const firestoreSessions: VisitorSession[] = [];
-        snapshot.forEach((docSnap) => {
-          firestoreSessions.push(docSnap.data() as VisitorSession);
-        });
-
-        // Merge firestore with any local sessions not yet synced
-        const mergedMap = new Map<string, VisitorSession>();
-        localData.forEach((s) => mergedMap.set(s.id, s));
-        firestoreSessions.forEach((s) => mergedMap.set(s.id, s));
-
-        const merged = Array.from(mergedMap.values()).sort(
-          (a, b) => (b.lastActiveAt || 0) - (a.lastActiveAt || 0)
-        );
-        callback(merged);
-      },
-      (error) => {
-        console.warn('[Firebase] Snapshot error, falling back to local storage:', error.message);
-        callback(getLocalSessions());
-      }
-    );
-
-    return unsubscribe;
-  } catch (err) {
-    console.warn('[Firebase] subscribe error:', err);
-    return () => {};
-  }
+  const q = query(
+    collection(db, 'visitors'),
+    where('lastActiveAt', '>=', sinceMs),
+    orderBy('lastActiveAt', 'desc'),
+    limit(3000),
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => onData(snapshot.docs.map((d) => d.data() as VisitorSession)),
+    (error) => onError(error.message),
+  );
 }
 
 // Save & retrieve Clarity Project ID from Firebase or LocalStorage

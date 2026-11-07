@@ -1,16 +1,22 @@
-import { StrictMode } from 'react'
-import { createRoot, hydrateRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
 
 const root = document.getElementById('root')!
-const app = (
-  <StrictMode>
-    <App />
-  </StrictMode>
-)
+const start = () => import('./boot.tsx').then(({ boot }) => boot(root))
 
-// Production builds ship the page prerendered (scripts/prerender.mjs); adopt that HTML instead of
-// rebuilding it, so nothing flashes or replays. The dev server serves an empty root.
-if (root.hasChildNodes()) hydrateRoot(root, app)
-else createRoot(root).render(app)
+// The page arrives prerendered, so it's already complete on screen. Evaluating and hydrating the app
+// keeps a slow phone's main thread busy for a while; start that only once the loading screen has
+// begun its exit (a GPU-only transition that stays smooth while the main thread works), so it never
+// delays or stutters the reveal. In dev the root is empty and the app renders straight away.
+const w = window as Window & { __plDone?: boolean }
+if (root.hasChildNodes() && document.getElementById('preloader') && !w.__plDone) {
+  let started = false
+  const go = () => {
+    if (started) return
+    started = true
+    window.setTimeout(start, 60)
+  }
+  window.addEventListener('pl:done', go, { once: true })
+  window.setTimeout(go, 4000)
+} else {
+  start()
+}

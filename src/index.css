@@ -243,14 +243,21 @@
 
 .animate-smooth-subtext {
   animation: smoothSubtextIn 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
-  will-change: transform, opacity;
 }
 
+/* Transform/opacity animations are composited without will-change; leaving it on kept a GPU layer
+   per letter alive for the life of the page. */
 .animate-hero-char {
   display: inline-block;
   transform: translateY(120%);
   animation: heroCharSlideUp 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity;
+}
+
+/* Hold the hero intro until the loading screen lifts (html.is-loading, see index.html), so it
+   plays in view rather than behind the loader. */
+.is-loading .animate-hero-char,
+.is-loading .animate-smooth-subtext {
+  animation-play-state: paused;
 }
 
 /* Slide-down and slide-up mobile drawer with an opacity fade */
@@ -553,4 +560,45 @@
 @keyframes imsg-dot {
   0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-2px); }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Lite mode (html.lite, set in index.html for low-memory / low-core devices, Data Saver or reduced
+   motion). Blur filters and backdrop blurs are the costliest effects on older phones' GPUs, so here
+   every reveal becomes a plain fade and glass surfaces keep their tint without the live blur.
+------------------------------------------------------------------------------------------------ */
+.lite .blur-reveal,
+.lite .blur-reveal[data-shown="true"],
+.lite .split-reveal,
+.lite .split-reveal[data-shown="true"] {
+  filter: none;
+  will-change: auto;
+}
+
+.lite .blur-reveal {
+  transition-property: opacity;
+  transition-duration: 0.9s;
+}
+
+.lite .split-word {
+  transition-duration: 0.8s;
+}
+
+.lite [class*="backdrop-blur"],
+.lite [style*="backdrop-filter"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Crossfades and screen transitions that animate filter: blur() inline keep only the fade/scale. */
+.lite [style*="filter: blur"] {
+  filter: none !important;
+}
+
+.lite .idea-bulb.is-on .glow {
+  animation: bulb-flicker 1.1s 0.6s forwards;
+}
+
+.lite .project-card-image {
+  transition-duration: 0.6s;
 }
