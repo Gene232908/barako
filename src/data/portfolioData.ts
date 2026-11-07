@@ -129,13 +129,13 @@ export const portfolioData: PortfolioData = {
     },
     {
       id: 'proj-3',
-      title: 'Spreadsheets to Web Systems',
-      category: 'Workflow Automation',
+      title: 'Everyday Web Apps',
+      category: 'Web Apps · Data Systems',
       link: '#works',
       year: '2026',
       description:
-        "Don't worry about your existing messy Excel or Google Sheets data—I can transform and connect it into clean, organized web systems. From inventory and profit trackers with AI assistants to automated financial ledgers, everything is organized, auto-computed, and easy to read without spreadsheet stress.",
-      stack: ['Spreadsheet Database', 'AI Store Assistant', 'Auto-Computed Profit', 'Stock Alerts'],
+        "Simple apps that take the stress out of keeping records. Tindahan Tracker turns a store's messy spreadsheet into a clean dashboard for stock and profit, and Utang List keeps track of who owes what, live on everyone's phone. Each one runs on the setup that fits it best, from a live Google Sheet to a real-time NoSQL database.",
+      stack: ['React', 'Firebase Firestore (NoSQL)', 'Google Sheets Database', 'Real-time Sync', 'AI Store Assistant'],
       sites: [
         {
           name: 'Tindahan Tracker',
@@ -151,6 +151,21 @@ export const portfolioData: PortfolioData = {
           url: 'https://onlinetindahan.vercel.app/',
           urlLabel: 'onlinetindahan',
           images: ['/images/tindahan-spreadsheet-mockup.jpg', '/images/tindahan-tracker.png'],
+        },
+        {
+          name: 'Utang List',
+          kind: 'Debt & Loan Tracker · NoSQL (Firestore)',
+          intro:
+            "A simple app for keeping track of who owes what. You make a card for each account you lend from, like GCash or BPI, add what people owe, and everyone on that card sees the same list, live. When someone pays, they tap \"I already paid\" and you confirm it, so there's no more chasing or guessing. It runs on a real-time NoSQL database instead of a spreadsheet, so every change shows up on everyone's phone right away.",
+          features: [
+            'Wallet cards: See at a glance who owes you and how much is left to collect',
+            'Split costs: Add an item and the amount is divided between everyone sharing it',
+            'Payment check: Friends mark what they paid, you check GCash or your bank, then confirm',
+            'Loan tracker: Follow a loan month by month, with your progress and next due date',
+            'Real-time and free: Sign in with Google and use it on any phone',
+          ],
+          note: 'Free · works on any phone',
+          images: ['/images/utanglist-mockup.jpg', '/images/utanglist-screens.jpg'],
         },
       ],
     },
