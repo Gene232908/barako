@@ -31,7 +31,7 @@ GitHub: https://github.com/Gene232908
 - Max Group of Companies: company website for a group running an aesthetics clinic, tattoo studio, skin clinic and coffee bar, with online appointment booking
 - MaxBeaut attendance system: staff clock-in with live camera verification, plus schedules, leave requests and payroll in one manager dashboard
 - Tindahan Tracker (https://onlinetindahan.vercel.app/): store inventory and profit tracking web app on a live spreadsheet database, with an AI store assistant, auto-computed profit and stock alerts
-- Utang List: shared debt and loan tracker on a real-time NoSQL database (Firebase Firestore); friends see the same list live, mark payments, and the lender confirms them
+- Utang List (https://panaykautang.vercel.app): shared debt and loan tracker on a real-time NoSQL database (Firebase Firestore); friends see the same list live, mark payments, and the lender confirms them
 - Social media management: posters, video reels, monthly content calendars in Meta Business Suite, audience insights and Meta Pixel setup, including a page with 166,000+ lifetime followers
 
 ## Tech stack
