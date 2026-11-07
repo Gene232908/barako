@@ -64,32 +64,36 @@ const shortSection = (name: string) => name.replace(/\s*\(.*\)$/, '');
 /* ------------------------------------------------------------------------------------------- */
 
 const UNLOCK_ERRORS: Record<string, string> = {
-  wrong: 'Wrong code. Try again.',
+  wrong: 'Wrong username or password.',
   'too-many': 'Too many attempts. Try again in a few minutes.',
   offline: "Can't reach the server. Check your connection.",
   error: 'Something went wrong. Try again.',
 };
 
-// The code is verified by Firebase (it's the admin account's password); on success the dashboard
-// sees the sign-in through watchAdmin.
-const CodeGate: React.FC = () => {
-  const [code, setCode] = useState('');
+const field =
+  'w-full h-12 rounded-full border border-black/15 bg-white px-5 text-[15px] outline-none transition focus:border-black placeholder:text-black/30';
+
+// Verified by Firebase; on success the dashboard sees the sign-in through watchAdmin.
+const LoginForm: React.FC = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
+  const userInput = useRef<HTMLInputElement>(null);
+  const passInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => input.current?.focus(), []);
+  useEffect(() => userInput.current?.focus(), []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (busy || !code.trim()) return;
+    if (busy || !username.trim() || !password) return;
     setBusy(true);
-    const result = await unlockAdmin(code);
+    const result = await unlockAdmin(username, password);
     setBusy(false);
     if (result === 'ok') return;
-    setCode('');
+    setPassword('');
     setError(UNLOCK_ERRORS[result]);
-    input.current?.focus();
+    passInput.current?.focus();
   };
 
   return (
@@ -98,32 +102,50 @@ const CodeGate: React.FC = () => {
         <Lock className="w-5 h-5" />
       </div>
       <h2 className="text-[22px] font-bold uppercase tracking-[-0.06em] leading-none">Admin</h2>
-      <p className="text-[13px] text-black/50 mt-2">Enter your secret code to view visitors.</p>
-      <label htmlFor="admin-code" className="sr-only">
-        Secret code
+      <p className="text-[13px] text-black/50 mt-2">Sign in to view your visitors.</p>
+      <label htmlFor="admin-user" className="sr-only">
+        Username
       </label>
       <input
-        ref={input}
-        id="admin-code"
-        type="password"
-        inputMode="numeric"
-        autoComplete="off"
-        value={code}
+        ref={userInput}
+        id="admin-user"
+        type="text"
+        autoComplete="username"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        value={username}
         onChange={(e) => {
-          setCode(e.target.value);
+          setUsername(e.target.value);
           setError(null);
         }}
-        placeholder="•••••"
-        className="mt-7 w-full h-12 rounded-full border border-black/15 bg-white px-5 text-center text-[18px] tracking-[0.4em] outline-none transition focus:border-black"
+        placeholder="Username"
+        className={`mt-7 ${field}`}
+      />
+      <label htmlFor="admin-pass" className="sr-only">
+        Password
+      </label>
+      <input
+        ref={passInput}
+        id="admin-pass"
+        type="password"
+        autoComplete="current-password"
+        value={password}
+        onChange={(e) => {
+          setPassword(e.target.value);
+          setError(null);
+        }}
+        placeholder="Password"
+        className={`mt-2.5 ${field}`}
       />
       <button
         type="submit"
-        disabled={busy || !code}
+        disabled={busy || !username.trim() || !password}
         className="mt-3 w-full h-12 rounded-full bg-black text-white text-[13px] font-bold uppercase tracking-[-0.02em] transition hover:bg-black/85 disabled:opacity-40 cursor-pointer disabled:cursor-default"
       >
-        {busy ? 'Checking…' : 'Unlock'}
+        {busy ? 'Signing in…' : 'Sign in'}
       </button>
-      <p role="alert" className="h-5 mt-3 text-[12px] font-medium text-[#c0362c]">
+      <p role="alert" className="min-h-5 mt-3 text-[12px] font-medium text-[#c0362c]">
         {error}
       </p>
     </form>
@@ -323,7 +345,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
         {unlocked === null ? (
           <p className="py-24 text-center text-[13px] text-black/45">Loading…</p>
         ) : !unlocked ? (
-          <CodeGate />
+          <LoginForm />
         ) : (
           <div className="flex flex-col gap-4 sm:gap-5 pt-6 sm:pt-8">
             {error && (
