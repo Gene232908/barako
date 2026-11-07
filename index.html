@@ -365,24 +365,25 @@
       .pl-inner {
         display: flex;
         flex-direction: column;
-        align-items: stretch;
-        gap: 14px;
-        width: max-content;
+        align-items: center;
+        gap: 12px;
+        width: 128px;
         transition: opacity 0.35s ease, transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
       }
       .pl-mask { overflow: hidden; padding: 0 2px; }
       .pl-word {
         display: block;
-        font-size: 30px;
+        font-size: 13px;
         font-weight: 700;
-        line-height: 1;
-        letter-spacing: -0.06em;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
         text-transform: uppercase;
         transform: translateY(105%);
         animation: pl-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
       }
       .pl-bar {
         position: relative;
+        width: 100%;
         height: 1px;
         background: rgba(0, 0, 0, 0.1);
         overflow: hidden;
@@ -395,38 +396,25 @@
         transform-origin: 0 50%;
         animation: pl-load 2.4s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
       }
-      .pl-meta {
-        display: flex;
-        justify-content: space-between;
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.45);
-        opacity: 0;
-        animation: pl-fade 0.6s ease 0.25s forwards;
-      }
       /* Ready: the bar completes, the content lifts away, then the white panel slides up. */
       #preloader.is-done { transform: translateY(-100%); pointer-events: none; }
       #preloader.is-done .pl-bar i { transform: scaleX(1); animation: none; transition: transform 0.25s ease-out; }
       #preloader.is-done .pl-inner { opacity: 0; transform: translateY(-14px); transition-delay: 0.1s; }
       @keyframes pl-rise { to { transform: translateY(0); } }
-      @keyframes pl-fade { to { opacity: 1; } }
       @keyframes pl-load { 0% { transform: scaleX(0); } 60% { transform: scaleX(0.7); } 100% { transform: scaleX(0.9); } }
       @keyframes pl-failsafe { to { visibility: hidden; } }
       @media (prefers-reduced-motion: reduce) {
         #preloader, .pl-inner { transition: opacity 0.3s ease; }
         #preloader.is-done { transform: none; opacity: 0; }
-        .pl-word, .pl-meta { animation: none; transform: none; opacity: 1; }
+        .pl-word { animation: none; transform: none; }
       }
     </style>
   </head>
   <body class="bg-white text-black antialiased selection:bg-black selection:text-white" data-clarity-unmask="true">
     <div id="preloader" aria-hidden="true">
       <div class="pl-inner">
-        <div class="pl-mask"><span class="pl-word">Gene Wagas</span></div>
+        <div class="pl-mask"><span class="pl-word">Loading</span></div>
         <div class="pl-bar"><i></i></div>
-        <div class="pl-meta"><span>Portfolio</span><span>&copy; 2026</span></div>
       </div>
     </div>
     <div id="root"></div>

@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// Visitors (the public site) may only create or update their own session document, in the shape
+// the tracker writes. Nobody but the admin account can read, list or delete anything.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'admin@genemat.site'
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function validSession(sessionId) {
+      let d = request.resource.data;
+      return sessionId.size() <= 64
+        && d.keys().hasOnly([
+          'id', 'visitorId', 'startedAt', 'lastActiveAt', 'userAgent', 'deviceType', 'browser',
+          'os', 'screen', 'referrer', 'currentSection', 'currentSectionName', 'sections',
+          'totalDurationSeconds', 'isLive', 'updatedAt'
+        ])
+        && d.id == sessionId
+        && d.visitorId is string && d.visitorId.size() <= 64
+        && d.startedAt is int && d.lastActiveAt is int
+        && d.userAgent is string && d.userAgent.size() <= 512
+        && d.deviceType in ['Desktop', 'Mobile', 'Tablet']
+        && d.browser is string && d.browser.size() <= 40
+        && d.os is string && d.os.size() <= 40
+        && d.screen is string && d.screen.size() <= 40
+        && d.referrer is string && d.referrer.size() <= 300
+        && d.currentSection is string && d.currentSection.size() <= 40
+        && d.currentSectionName is string && d.currentSectionName.size() <= 80
+        && d.sections is list && d.sections.size() <= 1000
+        && d.totalDurationSeconds is number;
+    }
+
+    match /visitors/{sessionId} {
+      allow read, delete: if isAdmin();
+      allow create, update: if validSession(sessionId);
+    }
+
+    // Everything else (e.g. old settings docs): admin only.
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

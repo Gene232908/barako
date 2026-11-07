@@ -10,7 +10,6 @@ import {
   orderBy,
   limit,
   where,
-  getDoc,
 } from 'firebase/firestore';
 import { getAnalytics, isSupported as isAnalyticsSupported, type Analytics } from 'firebase/analytics';
 
@@ -51,7 +50,6 @@ export interface VisitorSession {
 }
 
 const LOCAL_STORAGE_SESSIONS_KEY = 'barako_visitor_sessions_v1';
-const LOCAL_STORAGE_CLARITY_KEY = 'barako_clarity_project_id';
 
 let appInstance: FirebaseApp | null = null;
 let dbInstance: Firestore | null = null;
@@ -182,43 +180,4 @@ export function subscribeToRecentVisitors(
     (snapshot) => onData(snapshot.docs.map((d) => d.data() as VisitorSession)),
     (error) => onError(error.message),
   );
-}
-
-// Save & retrieve Clarity Project ID from Firebase or LocalStorage
-export async function fetchClarityProjectId(): Promise<string> {
-  if (typeof window === 'undefined') return '';
-  const localId = localStorage.getItem(LOCAL_STORAGE_CLARITY_KEY) || '';
-  const envId = (import.meta as any).env?.VITE_CLARITY_PROJECT_ID || '';
-
-  const db = getFirebaseDb();
-  if (db) {
-    try {
-      const configDoc = await getDoc(doc(db, 'settings', 'clarity'));
-      if (configDoc.exists() && configDoc.data()?.projectId) {
-        return configDoc.data().projectId;
-      }
-    } catch {
-      // fallback
-    }
-  }
-
-  return localId || envId;
-}
-
-export async function storeClarityProjectId(projectId: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-  const trimmed = projectId.trim();
-  localStorage.setItem(LOCAL_STORAGE_CLARITY_KEY, trimmed);
-
-  const db = getFirebaseDb();
-  if (db) {
-    try {
-      await setDoc(doc(db, 'settings', 'clarity'), {
-        projectId: trimmed,
-        updatedAt: Date.now(),
-      }, { merge: true });
-    } catch {
-      // ignore
-    }
-  }
 }

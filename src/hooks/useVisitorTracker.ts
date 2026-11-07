@@ -134,15 +134,12 @@ export function useVisitorTracker() {
 
 function startTracking(
   { syncVisitorSession, initFirebaseAnalytics }: typeof import('../lib/firebase'),
-  { initClarity, tagClaritySection, identifyClarityVisitor }: typeof import('../lib/clarity'),
+  { tagClaritySection, identifyClarityVisitor }: typeof import('../lib/clarity'),
   logEvent: typeof import('firebase/analytics').logEvent,
 ) {
   const sessionRef: { current: VisitorSession | null } = { current: null };
   const currentSectionStartRef = { current: 0 };
   const activeSectionIdRef = { current: 'hero' };
-
-  // 1. Initialize Microsoft Clarity
-  initClarity();
 
   // 2. Initialize Firebase Analytics
   let analyticsObj: any = null;

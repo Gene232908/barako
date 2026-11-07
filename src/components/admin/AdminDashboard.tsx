@@ -3,17 +3,12 @@ import { Monitor, Smartphone, Tablet, X, Lock, ArrowUpRight } from 'lucide-react
 import { subscribeToRecentVisitors, type VisitorSession } from '../../lib/firebase';
 import { lockScroll } from '../../lib/smoothScroll';
 import { VisitorsChart, type DayPoint } from './VisitorsChart';
+import { lockAdmin, unlockAdmin, watchAdmin } from './adminAuth';
 
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-// SHA-256 of the secret code. Only the hash ships in the bundle, never the code itself.
-const CODE_HASH = 'a8d2de097f81898ab845fe546637a1807c72dda813f3e80c61baa3f94da5cf14';
-const UNLOCK_KEY = 'gw_admin_unlocked';
-const MAX_TRIES = 5;
-const COOLDOWN_MS = 30_000;
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -21,11 +16,6 @@ const DAY = 24 * HOUR;
 const LIVE_WINDOW = 2 * MINUTE; // visitors ping every 30s while the page is open
 const CHART_DAYS = 30;
 const CLARITY_URL = 'https://clarity.microsoft.com/projects/view/z985sk1e91/dashboard';
-
-const sha256 = async (text: string) => {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
-};
 
 const startOfDay = (ms: number) => {
   const d = new Date(ms);
@@ -73,39 +63,32 @@ const shortSection = (name: string) => name.replace(/\s*\(.*\)$/, '');
 
 /* ------------------------------------------------------------------------------------------- */
 
-const CodeGate: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
+const UNLOCK_ERRORS: Record<string, string> = {
+  wrong: 'Wrong code. Try again.',
+  'too-many': 'Too many attempts. Try again in a few minutes.',
+  offline: "Can't reach the server. Check your connection.",
+  error: 'Something went wrong. Try again.',
+};
+
+// The code is verified by Firebase (it's the admin account's password); on success the dashboard
+// sees the sign-in through watchAdmin.
+const CodeGate: React.FC = () => {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const tries = useRef(0);
-  const lockedUntil = useRef(0);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => input.current?.focus(), []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (busy || !code) return;
-    const wait = lockedUntil.current - Date.now();
-    if (wait > 0) {
-      setError(`Too many attempts. Try again in ${Math.ceil(wait / 1000)}s.`);
-      return;
-    }
+    if (busy || !code.trim()) return;
     setBusy(true);
-    const ok = (await sha256(code.trim())) === CODE_HASH;
+    const result = await unlockAdmin(code);
     setBusy(false);
-    if (ok) {
-      sessionStorage.setItem(UNLOCK_KEY, '1');
-      onUnlock();
-      return;
-    }
-    tries.current += 1;
+    if (result === 'ok') return;
     setCode('');
-    if (tries.current >= MAX_TRIES) {
-      tries.current = 0;
-      lockedUntil.current = Date.now() + COOLDOWN_MS;
-      setError('Too many attempts. Try again in 30s.');
-    } else setError('Wrong code. Try again.');
+    setError(UNLOCK_ERRORS[result]);
     input.current?.focus();
   };
 
@@ -194,7 +177,8 @@ const VisitorLine: React.FC<{ s: VisitorSession }> = ({ s }) => (
 /* ------------------------------------------------------------------------------------------- */
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
-  const [unlocked, setUnlocked] = useState(() => typeof window !== 'undefined' && sessionStorage.getItem(UNLOCK_KEY) === '1');
+  // null while Firebase restores a previous sign-in, then whether the admin is signed in.
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [sessions, setSessions] = useState<VisitorSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -215,22 +199,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
     };
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    return watchAdmin((signedIn) => {
+      setUnlocked(signedIn);
+      // A listener cut off by signing out reports a permission error; don't carry it over.
+      setError(null);
+    });
+  }, [isOpen]);
+
   // Live data: every session active in the chart window, kept in sync by Firestore.
   useEffect(() => {
     if (!isOpen || !unlocked) return;
     const since = startOfDay(Date.now() - (CHART_DAYS - 1) * DAY);
-    return subscribeToRecentVisitors(
+    let active = true;
+    const unsubscribe = subscribeToRecentVisitors(
       since,
       (data) => {
+        if (!active) return;
         setSessions(data.filter((s) => !/localhost|127\.0\.0\.1/.test(s.referrer || '')));
         setLoading(false);
         setError(null);
       },
       (message) => {
+        if (!active) return;
         setError(message);
         setLoading(false);
       },
     );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [isOpen, unlocked]);
 
   // Re-evaluate "viewing now" and relative times as the clock moves.
@@ -277,10 +277,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   const lock = () => {
-    sessionStorage.removeItem(UNLOCK_KEY);
-    setUnlocked(false);
     setSessions([]);
     setLoading(true);
+    lockAdmin();
   };
 
   return (
@@ -321,8 +320,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       </div>
 
       <div className="max-w-280 mx-auto px-4 sm:px-8 pb-16">
-        {!unlocked ? (
-          <CodeGate onUnlock={() => setUnlocked(true)} />
+        {unlocked === null ? (
+          <p className="py-24 text-center text-[13px] text-black/45">Loading…</p>
+        ) : !unlocked ? (
+          <CodeGate />
         ) : (
           <div className="flex flex-col gap-4 sm:gap-5 pt-6 sm:pt-8">
             {error && (
