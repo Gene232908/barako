@@ -1,10 +1,10 @@
 import React from 'react';
 import { RollingLink } from './RollingLink';
 import { BlurReveal } from './BlurReveal';
-import type { SocialLink, ContactInfo } from '../types/portfolio';
+import type { SocialLink, ContactInfo, NavLink } from '../types/portfolio';
 
 interface FooterProps {
-  navLinks: { label: string; href: string }[];
+  navLinks: NavLink[];
   socials: SocialLink[];
   contacts: ContactInfo;
   onOpenAdmin?: () => void;
@@ -35,6 +35,8 @@ export const Footer: React.FC<FooterProps> = ({
                   key={link.label}
                   href={link.href}
                   label={link.label}
+                  target={link.newTab ? '_blank' : undefined}
+                  rel={link.newTab ? 'noopener noreferrer' : undefined}
                 />
               ))}
             </div>

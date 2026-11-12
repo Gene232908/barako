@@ -16,6 +16,12 @@ export interface SampleSite {
   images: string[];
 }
 
+export interface NavLink {
+  label: string;
+  href: string;
+  newTab?: boolean;
+}
+
 export interface ProjectItem {
   id: string;
   title: string;
@@ -79,10 +85,7 @@ export interface PortfolioData {
     items: ServiceItem[];
   };
   projects: ProjectItem[];
-  navigation: {
-    label: string;
-    href: string;
-  }[];
+  navigation: NavLink[];
   socials: SocialLink[];
   contacts: ContactInfo;
 }

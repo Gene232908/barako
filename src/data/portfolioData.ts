@@ -5,10 +5,9 @@ export const portfolioData: PortfolioData = {
     logoText: 'GW™',
     fullName: 'GENE WAGAS',
     roles: [
-      'FULL STACK DEVELOPER',
+      'FULL STACK WEB DEVELOPER',
+      'UI/UX DESIGNER',
       'IT SPECIALIST',
-      'SOCIAL MEDIA MANAGER',
-      'TECHNICAL SUPPORT',
     ],
     year: 'PORTFOLIO 2026',
   },
@@ -16,6 +15,7 @@ export const portfolioData: PortfolioData = {
     { label: 'Works', href: '#works' },
     { label: 'About', href: '#about' },
     { label: 'Services', href: '#services' },
+    { label: 'CV', href: '/Gene-Wagas-CV.pdf', newTab: true },
     { label: 'Contact', href: '#contact' },
   ],
   projects: [
@@ -65,6 +65,49 @@ export const portfolioData: PortfolioData = {
       description:
         "A few websites I've designed and built, from simple landing pages to full business sites. Each one is fast, responsive and easy to use on any screen.",
       stack: ['React', 'TypeScript', 'Tailwind CSS', 'Vite'],
+    },
+    {
+      id: 'proj-3',
+      title: 'Everyday Web Apps',
+      category: 'Web Apps · Data Systems',
+      link: '#works',
+      year: '2026',
+      description:
+        "Simple apps that take the stress out of keeping records. Tindahan Tracker turns a store's messy spreadsheet into a clean dashboard for stock and profit, and Utang List keeps track of who owes what, live on everyone's phone. Each one runs on the setup that fits it best, from a live Google Sheet to a real-time NoSQL database.",
+      stack: ['React', 'Firebase Firestore (NoSQL)', 'Google Sheets Database', 'Real-time Sync', 'AI Store Assistant'],
+      sites: [
+        {
+          name: 'Tindahan Tracker',
+          kind: 'Store & Inventory Web App · Spreadsheet Database',
+          intro:
+            "A smart store inventory and profit tracking web app powered by a live spreadsheet database. Don't worry about your existing messy Excel or Google Sheets files—I organize and connect your data into a clean, simple interface so it's effortless to read and never overwhelming. Store owners can track daily profit, sales, and inventory alerts in real time.",
+          features: [
+            'AI Store Assistant: Type or speak naturally (e.g. "Coke Mismo buy 15 sell 20 stock 24") to auto-insert inventory',
+            'Live spreadsheet database: Seamlessly connects to your existing Excel/Sheets data',
+            'Auto-computed profit: Real-time computation of Today\'s Profit, Monthly Sales, and Margins',
+            'Smart inventory alerts: Instant warnings for Low Stock, Sold Out, and Loss-Making products',
+          ],
+          url: 'https://onlinetindahan.vercel.app/',
+          urlLabel: 'onlinetindahan',
+          images: ['/images/tindahan-spreadsheet-mockup.jpg', '/images/tindahan-tracker.png'],
+        },
+        {
+          name: 'Utang List',
+          kind: 'Debt & Loan Tracker · NoSQL (Firestore)',
+          intro:
+            "A simple app for keeping track of who owes what. You make a card for each account you lend from, like GCash or BPI, add what people owe, and everyone on that card sees the same list, live. When someone pays, they tap \"I already paid\" and you confirm it, so there's no more chasing or guessing. It runs on a real-time NoSQL database instead of a spreadsheet, so every change shows up on everyone's phone right away.",
+          features: [
+            'Wallet cards: See at a glance who owes you and how much is left to collect',
+            'Split costs: Add an item and the amount is divided between everyone sharing it',
+            'Payment check: Friends mark what they paid, you check GCash or your bank, then confirm',
+            'Loan tracker: Follow a loan month by month, with your progress and next due date',
+            'Real-time and free: Sign in with Google and use it on your phone, tablet or laptop',
+          ],
+          url: 'https://panaykautang.vercel.app',
+          urlLabel: 'utang',
+          images: ['/images/utanglist-mockup.jpg', '/images/utanglist-desktop.jpg', '/images/utanglist-screens.jpg'],
+        },
+      ],
     },
     {
       id: 'proj-2',
@@ -126,49 +169,6 @@ export const portfolioData: PortfolioData = {
       description:
         'I help businesses stay active online. From producing posters and promotional video reels across 60+ organized creative folders, to planning a full month of posts in Meta Business Suite, reading audience insights, and installing the Meta Pixel so marketing campaigns can track and expand their ads.',
       stack: ['Meta Business Suite', 'Content calendar', 'Posters & video reels', 'Audience insights', 'Meta Pixel Setup'],
-    },
-    {
-      id: 'proj-3',
-      title: 'Everyday Web Apps',
-      category: 'Web Apps · Data Systems',
-      link: '#works',
-      year: '2026',
-      description:
-        "Simple apps that take the stress out of keeping records. Tindahan Tracker turns a store's messy spreadsheet into a clean dashboard for stock and profit, and Utang List keeps track of who owes what, live on everyone's phone. Each one runs on the setup that fits it best, from a live Google Sheet to a real-time NoSQL database.",
-      stack: ['React', 'Firebase Firestore (NoSQL)', 'Google Sheets Database', 'Real-time Sync', 'AI Store Assistant'],
-      sites: [
-        {
-          name: 'Tindahan Tracker',
-          kind: 'Store & Inventory Web App · Spreadsheet Database',
-          intro:
-            "A smart store inventory and profit tracking web app powered by a live spreadsheet database. Don't worry about your existing messy Excel or Google Sheets files—I organize and connect your data into a clean, simple interface so it's effortless to read and never overwhelming. Store owners can track daily profit, sales, and inventory alerts in real time.",
-          features: [
-            'AI Store Assistant: Type or speak naturally (e.g. "Coke Mismo buy 15 sell 20 stock 24") to auto-insert inventory',
-            'Live spreadsheet database: Seamlessly connects to your existing Excel/Sheets data',
-            'Auto-computed profit: Real-time computation of Today\'s Profit, Monthly Sales, and Margins',
-            'Smart inventory alerts: Instant warnings for Low Stock, Sold Out, and Loss-Making products',
-          ],
-          url: 'https://onlinetindahan.vercel.app/',
-          urlLabel: 'onlinetindahan',
-          images: ['/images/tindahan-spreadsheet-mockup.jpg', '/images/tindahan-tracker.png'],
-        },
-        {
-          name: 'Utang List',
-          kind: 'Debt & Loan Tracker · NoSQL (Firestore)',
-          intro:
-            "A simple app for keeping track of who owes what. You make a card for each account you lend from, like GCash or BPI, add what people owe, and everyone on that card sees the same list, live. When someone pays, they tap \"I already paid\" and you confirm it, so there's no more chasing or guessing. It runs on a real-time NoSQL database instead of a spreadsheet, so every change shows up on everyone's phone right away.",
-          features: [
-            'Wallet cards: See at a glance who owes you and how much is left to collect',
-            'Split costs: Add an item and the amount is divided between everyone sharing it',
-            'Payment check: Friends mark what they paid, you check GCash or your bank, then confirm',
-            'Loan tracker: Follow a loan month by month, with your progress and next due date',
-            'Real-time and free: Sign in with Google and use it on your phone, tablet or laptop',
-          ],
-          url: 'https://panaykautang.vercel.app',
-          urlLabel: 'utang',
-          images: ['/images/utanglist-mockup.jpg', '/images/utanglist-desktop.jpg', '/images/utanglist-screens.jpg'],
-        },
-      ],
     },
   ],
   about: {

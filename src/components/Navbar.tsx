@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { RollingLink } from './RollingLink';
 import { CONTACT_HREF, openPhoneChat } from '../lib/phoneChat';
 import { lockScroll } from '../lib/smoothScroll';
+import type { NavLink } from '../types/portfolio';
 
 interface NavbarProps {
   logoText: string;
-  navLinks: { label: string; href: string }[];
+  navLinks: NavLink[];
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -61,6 +62,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   key={link.label}
                   href={link.href}
                   label={link.label}
+                  target={link.newTab ? '_blank' : undefined}
+                  rel={link.newTab ? 'noopener noreferrer' : undefined}
                 />
               ))}
             </nav>
@@ -143,6 +146,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <a
               key={link.label}
               href={link.href}
+              target={link.newTab ? '_blank' : undefined}
+              rel={link.newTab ? 'noopener noreferrer' : undefined}
               onClick={(e) => {
                 setMobileMenuOpen(false);
                 if (link.href === CONTACT_HREF) {
